@@ -1,5 +1,5 @@
 // =============================================================
-// 听写应用逻辑 (年级单选 + Week 多选 + 单字分页)
+// 听写应用逻辑 (年级单选 + Week 多选 + 例句词汇独立判定 + 单字分页)
 // =============================================================
 
 const SUPABASE_URL = 'https://whqpuzxfheqwaniuqbbz.supabase.co';
@@ -14,6 +14,9 @@ let currentWordIndex = 0;
 // 状态映射
 const checkboxStateMap = new Map();
 const touchedMap = new Map();
+const learnedCheckboxMap = new Map();
+const learnedTouchedMap = new Map();
+let wordSourceIndex = new Map();
 
 // ---------- DOM 元素安全获取 ----------
 const gradeSelect = document.getElementById('gradeSelect');
@@ -29,7 +32,7 @@ const wrongWordsBtn = document.getElementById('wrongWordsBtn');
 const statusMsg = document.getElementById('statusMsg');
 
 // =============================================================
-// 1. 初始化：加载所有年级和 Week 的对应关系结构
+// 1. 初始化菜单
 // =============================================================
 async function initMetadata() {
   try {
@@ -70,6 +73,9 @@ async function initMetadata() {
       gradeWeekMap[g] = Array.from(gradeWeekMap[g]).sort((a, b) => a - b);
     });
 
+    // 同时构建全局词汇索引用于例句匹配
+    await buildGlobalWordIndexForStats();
+
     renderGradeOptions();
     updateStatusMessage('');
   } catch (err) {
@@ -96,7 +102,6 @@ function renderGradeOptions() {
   }
 }
 
-// 年级改变时，动态生成多选 Week 复选框
 function onGradeChange() {
   if (!gradeSelect || !weekCheckboxContainer) return;
   const selectedGrade = gradeSelect.value;
@@ -112,17 +117,17 @@ function onGradeChange() {
   weeks.forEach(w => {
     const chip = document.createElement('label');
     chip.className = 'week-chip';
-    if (w === weeks[0]) chip.classList.add('selected'); // 默认选中第一个
+    if (w === weeks[0]) chip.classList.add('selected');
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.value = w;
-    if (w === weeks[0]) checkbox.checked = true; // 默认勾选第一个
+    if (w === weeks[0]) checkbox.checked = true;
 
     checkbox.addEventListener('change', () => {
       if (checkbox.checked) chip.classList.add('selected');
       else chip.classList.remove('selected');
-      loadWordsForSelectedWeeks(); // 每次勾选变化时动态加载
+      loadWordsForSelectedWeeks();
     });
 
     chip.appendChild(checkbox);
@@ -130,11 +135,9 @@ function onGradeChange() {
     weekCheckboxContainer.appendChild(chip);
   });
 
-  // 默认加载第一个 Week 的单词
   loadWordsForSelectedWeeks();
 }
 
-// 获取当前勾选的所有 Week 数组
 function getSelectedWeeks() {
   if (!weekCheckboxContainer) return [];
   const checkboxes = weekCheckboxContainer.querySelectorAll('input[type="checkbox"]:checked');
@@ -142,7 +145,63 @@ function getSelectedWeeks() {
 }
 
 // =============================================================
-// 2. 根据选中的年级和【多个 Week】动态批量加载单词
+// 构建全局词汇索引（用于分析例句中的单词及对应 ID）
+// =============================================================
+async function buildGlobalWordIndexForStats() {
+  let allRows = [];
+  let page = 0;
+  let pageSize = 1000;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data, error } = await supabaseClient
+      .from('words')
+      .select('id, grade, week, word')
+      .range(page * pageSize, (page + 1) * pageSize - 1);
+
+    if (error) return;
+    if (data && data.length > 0) {
+      allRows = allRows.concat(data);
+      if (data.length < pageSize) hasMore = false;
+      else page++;
+    } else {
+      hasMore = false;
+    }
+  }
+
+  wordSourceIndex = new Map();
+  allRows.forEach(row => {
+    const token = row.word.toLowerCase().trim();
+    if (!wordSourceIndex.has(token)) wordSourceIndex.set(token, []);
+    wordSourceIndex.get(token).push({ id: row.id, grade: row.grade, week: row.week });
+  });
+}
+
+function tokenizeSentence(sentence) {
+  return sentence.split(/[^a-zA-Z']+/).filter(t => t.length > 0);
+}
+
+function findLearnedWords(sentence) {
+  const tokens = tokenizeSentence(sentence);
+  const seen = new Set();
+  const result = [];
+  tokens.forEach(token => {
+    const lower = token.toLowerCase();
+    if (lower.length < 2) return;
+    if (seen.has(lower)) return;
+    if (wordSourceIndex.has(lower)) {
+      seen.add(lower);
+      result.push({
+        word: token,
+        sources: wordSourceIndex.get(lower)
+      });
+    }
+  });
+  return result;
+}
+
+// =============================================================
+// 2. 加载单词
 // =============================================================
 async function loadWordsForSelectedWeeks() {
   if (!gradeSelect) return;
@@ -162,7 +221,6 @@ async function loadWordsForSelectedWeeks() {
   try {
     updateStatusMessage(`正在加载 ${grade}年级 选定 Week 单词...`);
 
-    // 使用 Supabase 的 .in() 过滤多个 week
     const { data, error } = await supabaseClient
       .from('words')
       .select('*')
@@ -180,16 +238,25 @@ async function loadWordsForSelectedWeeks() {
       wordIndex: idx,
       word: row.word,
       sentence: row.sentence,
-      subtitle: `Week ${row.week} 练习`
+      subtitle: `Week ${row.week} 练习`,
+      learnedWords: findLearnedWords(row.sentence)
     }));
 
     checkboxStateMap.clear();
     touchedMap.clear();
+    learnedCheckboxMap.clear();
+    learnedTouchedMap.clear();
 
     displayItems.forEach(item => {
       const key = `${item.grade}-${item.week}-${item.wordIndex}`;
       checkboxStateMap.set(key, 0);
       touchedMap.set(key, false);
+
+      item.learnedWords.forEach(lw => {
+        const lwKey = `${key}::${lw.word.toLowerCase()}`;
+        learnedCheckboxMap.set(lwKey, false);
+        learnedTouchedMap.set(lwKey, false);
+      });
     });
 
     renderWords();
@@ -201,7 +268,7 @@ async function loadWordsForSelectedWeeks() {
 }
 
 // =============================================================
-// 3. 错词本视图加载
+// 3. 错词本视图
 // =============================================================
 async function showWrongWordsList() {
   try {
@@ -250,16 +317,25 @@ async function showWrongWordsList() {
       wordIndex: idx,
       word: row.word,
       sentence: row.sentence,
-      subtitle: `G${row.grade} W${row.week} (错 ${(row.test_time || 0) - (row.correct_time || 0)}次)`
+      subtitle: `G${row.grade} W${row.week} (错 ${(row.test_time || 0) - (row.correct_time || 0)}次)`,
+      learnedWords: findLearnedWords(row.sentence)
     }));
 
     checkboxStateMap.clear();
     touchedMap.clear();
+    learnedCheckboxMap.clear();
+    learnedTouchedMap.clear();
 
     displayItems.forEach(item => {
       const key = `${item.grade}-${item.week}-${item.wordIndex}`;
       checkboxStateMap.set(key, 0);
       touchedMap.set(key, false);
+
+      item.learnedWords.forEach(lw => {
+        const lwKey = `${key}::${lw.word.toLowerCase()}`;
+        learnedCheckboxMap.set(lwKey, false);
+        learnedTouchedMap.set(lwKey, false);
+      });
     });
 
     renderWords();
@@ -382,7 +458,6 @@ function createWordCard(item, key) {
     subSpan.textContent = `来源: ${item.subtitle}`;
     mainDiv.appendChild(subSpan);
   } else {
-    // 多选模式下显示当前单词属于哪个 Week
     const subSpan = document.createElement('span');
     subSpan.style.cssText = 'font-size: 0.72rem; color: #6b7a8f; font-weight: 600;';
     subSpan.textContent = `Week ${item.week}`;
@@ -391,6 +466,59 @@ function createWordCard(item, key) {
 
   mainDiv.appendChild(wordSpan);
   mainDiv.appendChild(sentenceSpan);
+
+  // 🌟 例句中包含的已学词独立判定区域
+  if (item.learnedWords && item.learnedWords.length > 0) {
+    const learnedBox = document.createElement('div');
+    learnedBox.className = 'learned-words';
+
+    const learnedTitle = document.createElement('div');
+    learnedTitle.className = 'learned-words-title';
+    learnedTitle.textContent = '📖 例句词汇判定';
+    learnedBox.appendChild(learnedTitle);
+
+    const learnedList = document.createElement('div');
+    learnedList.className = 'learned-words-list';
+
+    item.learnedWords.forEach(lw => {
+      const lwKey = `${key}::${lw.word.toLowerCase()}`;
+      const lwItem = document.createElement('div');
+      lwItem.className = 'learned-word-item';
+
+      if (learnedTouchedMap.get(lwKey) === true) {
+        if (learnedCheckboxMap.get(lwKey) === true) lwItem.classList.add('correct');
+        else lwItem.classList.add('incorrect');
+      }
+
+      const textSpan = document.createElement('span');
+      textSpan.className = 'learned-word-text';
+      textSpan.textContent = lw.word;
+
+      const sourceSpan = document.createElement('span');
+      sourceSpan.className = 'learned-word-source';
+      sourceSpan.textContent = lw.sources.slice(0, 2).map(s => `G${s.grade}W${s.week}`).join('·');
+
+      const checkSpan = document.createElement('span');
+      checkSpan.className = 'learned-word-check';
+      if (learnedTouchedMap.get(lwKey) === true) {
+        checkSpan.textContent = learnedCheckboxMap.get(lwKey) ? '✓' : '✗';
+      }
+
+      lwItem.appendChild(textSpan);
+      lwItem.appendChild(sourceSpan);
+      lwItem.appendChild(checkSpan);
+
+      lwItem.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleLearnedCheckbox(lwKey, lwItem);
+      });
+
+      learnedList.appendChild(lwItem);
+    });
+
+    learnedBox.appendChild(learnedList);
+    mainDiv.appendChild(learnedBox);
+  }
 
   const checkWrapper = document.createElement('div');
   checkWrapper.className = 'check-wrapper';
@@ -417,6 +545,25 @@ function createWordCard(item, key) {
   return card;
 }
 
+function toggleLearnedCheckbox(lwKey, element) {
+  const touched = learnedTouchedMap.get(lwKey) === true;
+  const isCorrect = learnedCheckboxMap.get(lwKey) === true;
+
+  let newTouched, newCorrect;
+  if (!touched) { newTouched = true; newCorrect = true; }
+  else if (isCorrect) { newTouched = true; newCorrect = false; }
+  else { newTouched = false; newCorrect = false; }
+
+  learnedTouchedMap.set(lwKey, newTouched);
+  learnedCheckboxMap.set(lwKey, newCorrect);
+
+  element.classList.remove('correct', 'incorrect');
+  const checkSpan = element.querySelector('.learned-word-check');
+  if (!newTouched) checkSpan.textContent = '';
+  else if (newCorrect) { element.classList.add('correct'); checkSpan.textContent = '✓'; }
+  else { element.classList.add('incorrect'); checkSpan.textContent = '✗'; }
+}
+
 function toggleCheckboxByKey(key) {
   let currentState = checkboxStateMap.get(key) || 0;
   let newState = (currentState + 1) % 3;
@@ -435,7 +582,7 @@ function toggleCheckboxByKey(key) {
 }
 
 // =============================================================
-// 5. 数据库同步函数
+// 5. 数据库同步函数（同时提交目标单词和例句内已学词的判定结果）
 // =============================================================
 async function submitResultsToSupabase() {
   const testedIds = [];
@@ -443,10 +590,30 @@ async function submitResultsToSupabase() {
 
   displayItems.forEach(item => {
     const key = `${item.grade}-${item.week}-${item.wordIndex}`;
+    
+    // 目标单词
     const state = checkboxStateMap.get(key) || 0;
     if (state !== 0 && item.id) {
       testedIds.push(item.id);
       if (state === 1) correctIds.push(item.id);
+    }
+
+    // 例句中的已学词
+    if (item.learnedWords && item.learnedWords.length > 0) {
+      item.learnedWords.forEach(lw => {
+        const lwKey = `${key}::${lw.word.toLowerCase()}`;
+        const isTouched = learnedTouchedMap.get(lwKey) === true;
+        const isCorrect = learnedCheckboxMap.get(lwKey) === true;
+
+        if (isTouched && lw.sources && lw.sources.length > 0) {
+          lw.sources.forEach(source => {
+            if (source.id) {
+              testedIds.push(source.id);
+              if (isCorrect) correctIds.push(source.id);
+            }
+          });
+        }
+      });
     }
   });
 
@@ -547,7 +714,6 @@ if (gradeSelect) gradeSelect.addEventListener('change', () => {
   onGradeChange();
 });
 
-// 全选/清空 Week 快捷按钮
 if (selectAllWeeksBtn) {
   selectAllWeeksBtn.addEventListener('click', () => {
     if (!weekCheckboxContainer) return;
@@ -589,6 +755,11 @@ if (clearAllBtn) {
       const key = `${item.grade}-${item.week}-${item.wordIndex}`;
       checkboxStateMap.set(key, 0);
       touchedMap.set(key, false);
+      item.learnedWords.forEach(lw => {
+        const lwKey = `${key}::${lw.word.toLowerCase()}`;
+        learnedCheckboxMap.set(lwKey, false);
+        learnedTouchedMap.set(lwKey, false);
+      });
     });
     renderWords();
     updateStatusMessage('已清空当前勾选');
