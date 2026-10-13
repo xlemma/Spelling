@@ -3,30 +3,35 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-  <title>英语听写 · 多年级多Week</title>
+  <title>英语听写 · 动态下拉选择版</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="app-container">
     <h1>📘 听写单词</h1>
     <div class="subhead">
-      可多选年级与 Week · 例句难度匹配年级 · 已学词统计 <span class="auto-badge">⚡ 自动下载已开启</span>
+      选择年级与 Week 动态加载 · 已学词统计 <span class="auto-badge">⚡ 自动下载已开启</span>
     </div>
 
+    <!-- 动态下拉选择面板 -->
     <div class="panel">
       <div class="panel-title">
-        <span>📚 年级</span>
-        <button class="toggle-all" id="toggleAllGrades">全选/清空</button>
+        <span>📚 年级与 Week 选择</span>
       </div>
-      <div class="chips" id="gradeChips"></div>
-    </div>
-
-    <div class="panel">
-      <div class="panel-title">
-        <span>📅 Week</span>
-        <button class="toggle-all" id="toggleAllWeeks">全选/清空</button>
+      <div class="select-group">
+        <div class="select-item">
+          <label for="gradeSelect">年级</label>
+          <select id="gradeSelect" class="form-select">
+            <option value="">请选择年级</option>
+          </select>
+        </div>
+        <div class="select-item">
+          <label for="weekSelect">Week</label>
+          <select id="weekSelect" class="form-select">
+            <option value="">请选择 Week</option>
+          </select>
+        </div>
       </div>
-      <div class="chips" id="weekChips"></div>
     </div>
 
     <div id="wordsContainer"></div>
