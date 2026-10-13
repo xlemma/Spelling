@@ -1,5 +1,5 @@
 // =============================================================
-// 听写应用逻辑 (年级单选 + Week 多选 + 例句词汇独立判定 + 单字分页)
+// 听写应用逻辑 (修复 Week 加载与多选联动)
 // =============================================================
 
 const SUPABASE_URL = 'https://whqpuzxfheqwaniuqbbz.supabase.co';
@@ -63,8 +63,8 @@ async function initMetadata() {
 
     gradeWeekMap = {};
     allRows.forEach(row => {
-      const g = row.grade;
-      const w = row.week;
+      const g = String(row.grade); // 统一转换为字符串键
+      const w = Number(row.week);
       if (!gradeWeekMap[g]) gradeWeekMap[g] = new Set();
       gradeWeekMap[g].add(w);
     });
@@ -73,21 +73,23 @@ async function initMetadata() {
       gradeWeekMap[g] = Array.from(gradeWeekMap[g]).sort((a, b) => a - b);
     });
 
-    // 同时构建全局词汇索引用于例句匹配
+    console.log('解析出的年级与Week映射:', gradeWeekMap);
+
+    // 先构建全局词汇索引
     await buildGlobalWordIndexForStats();
 
     renderGradeOptions();
     updateStatusMessage('');
   } catch (err) {
     console.error('初始化菜单失败:', err);
-    updateStatusMessage('❌ 初始化失败，请检查网络');
+    updateStatusMessage('❌ 初始化失败，请检查控制台');
   }
 }
 
 function renderGradeOptions() {
   if (!gradeSelect) return;
   gradeSelect.innerHTML = '<option value="">请选择年级</option>';
-  const grades = Object.keys(gradeWeekMap).sort((a, b) => a - b);
+  const grades = Object.keys(gradeWeekMap).sort((a, b) => Number(a) - Number(b));
   
   grades.forEach(g => {
     const opt = document.createElement('option');
@@ -98,7 +100,7 @@ function renderGradeOptions() {
 
   if (grades.length > 0) {
     gradeSelect.value = grades[0];
-    onGradeChange();
+    onGradeChange(); // 主动触发第一个年级的 Week 渲染
   }
 }
 
@@ -108,7 +110,7 @@ function onGradeChange() {
   weekCheckboxContainer.innerHTML = '';
 
   if (!selectedGrade || !gradeWeekMap[selectedGrade]) {
-    weekCheckboxContainer.innerHTML = '<div class="empty-state" style="padding: 10px;">请先选择年级</div>';
+    weekCheckboxContainer.innerHTML = '<div class="empty-state" style="padding: 10px;">该年级暂无 Week 数据</div>';
     return;
   }
 
@@ -117,12 +119,12 @@ function onGradeChange() {
   weeks.forEach(w => {
     const chip = document.createElement('label');
     chip.className = 'week-chip';
-    if (w === weeks[0]) chip.classList.add('selected');
+    if (w === weeks[0]) chip.classList.add('selected'); // 默认选中第一个
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.value = w;
-    if (w === weeks[0]) checkbox.checked = true;
+    if (w === weeks[0]) checkbox.checked = true; // 默认勾选第一个
 
     checkbox.addEventListener('change', () => {
       if (checkbox.checked) chip.classList.add('selected');
@@ -145,7 +147,7 @@ function getSelectedWeeks() {
 }
 
 // =============================================================
-// 构建全局词汇索引（用于分析例句中的单词及对应 ID）
+// 构建全局词汇索引
 // =============================================================
 async function buildGlobalWordIndexForStats() {
   let allRows = [];
@@ -467,7 +469,7 @@ function createWordCard(item, key) {
   mainDiv.appendChild(wordSpan);
   mainDiv.appendChild(sentenceSpan);
 
-  // 🌟 例句中包含的已学词独立判定区域
+  // 例句词汇判定区域
   if (item.learnedWords && item.learnedWords.length > 0) {
     const learnedBox = document.createElement('div');
     learnedBox.className = 'learned-words';
@@ -582,7 +584,7 @@ function toggleCheckboxByKey(key) {
 }
 
 // =============================================================
-// 5. 数据库同步函数（同时提交目标单词和例句内已学词的判定结果）
+// 5. 数据库同步函数
 // =============================================================
 async function submitResultsToSupabase() {
   const testedIds = [];
@@ -590,15 +592,12 @@ async function submitResultsToSupabase() {
 
   displayItems.forEach(item => {
     const key = `${item.grade}-${item.week}-${item.wordIndex}`;
-    
-    // 目标单词
     const state = checkboxStateMap.get(key) || 0;
     if (state !== 0 && item.id) {
       testedIds.push(item.id);
       if (state === 1) correctIds.push(item.id);
     }
 
-    // 例句中的已学词
     if (item.learnedWords && item.learnedWords.length > 0) {
       item.learnedWords.forEach(lw => {
         const lwKey = `${key}::${lw.word.toLowerCase()}`;
