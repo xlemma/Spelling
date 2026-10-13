@@ -248,7 +248,6 @@ h1 {
   word-break: break-word;
 }
 
-/* 例句中提取出来的已学词样式 */
 .learned-words {
   margin-top: 8px;
   background: #fefce8;
@@ -374,17 +373,13 @@ h1 {
   color: white;
 }
 
+/* 取消了吸底属性，改为常规流式排布 */
 .action-buttons {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 14px;
-  position: sticky;
-  bottom: 12px;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(8px);
-  padding: 10px 0 4px;
-  border-radius: 20px;
+  margin-top: 18px;
+  padding: 4px 0;
 }
 
 .btn {
