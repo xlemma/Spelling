@@ -1,18 +1,19 @@
 // =============================================================
-// 听写应用逻辑 (年级 & Week 动态联动下拉 + 已学词同步版)
+// 听写应用逻辑 (年级 Week 联动 + 错词直接刷新主列表版)
 // =============================================================
 
 const SUPABASE_URL = 'https://whqpuzxfheqwaniuqbbz.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_8eE1_U1jpk5G_tHcVtAjFg_Pz7lG9Q_';
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// 存储所有可用元数据：{ grade: [weeks...] }
 let gradeWeekMap = {};
-
 const AUTO_DOWNLOAD = true;
 
 let displayItems = [];
 let spellingData = {}; 
+
+// 状态标志：当前是否处于错词视图
+let isWrongWordsView = false;
 
 // 状态映射
 const checkboxStateMap = new Map();
@@ -30,6 +31,7 @@ const downloadBtn = document.getElementById('downloadBtn');
 const submitBtn = document.getElementById('submitBtn');
 const statsBtn = document.getElementById('statsBtn');
 const clearAllBtn = document.getElementById('clearAllBtn');
+const wrongWordsBtn = document.getElementById('wrongWordsBtn');
 const statusMsg = document.getElementById('statusMsg');
 
 const statsModal = document.getElementById('statsModal');
@@ -87,7 +89,6 @@ async function initMetadata() {
   }
 }
 
-// 渲染年级下拉项
 function renderGradeOptions() {
   if (!gradeSelect) return;
   gradeSelect.innerHTML = '<option value="">请选择年级</option>';
@@ -106,7 +107,6 @@ function renderGradeOptions() {
   }
 }
 
-// 年级改变时，动态更新 Week 下拉菜单
 function onGradeChange() {
   if (!weekSelect || !gradeSelect) return;
   const selectedGrade = gradeSelect.value;
@@ -129,6 +129,7 @@ function onGradeChange() {
 
   if (weeks.length > 0) {
     weekSelect.value = weeks[0];
+    isWrongWordsView = false; // 切换回普通年级Week视图
     loadWordsForCurrentSelection();
   }
 }
@@ -141,10 +142,7 @@ async function loadWordsForCurrentSelection() {
   const grade = gradeSelect.value;
   const week = weekSelect.value;
 
-  if (!grade || !week) {
-    if (wordsContainer) wordsContainer.innerHTML = '<div class="empty-state">请完整选择年级和 Week</div>';
-    return;
-  }
+  if (!grade || !week) return;
 
   try {
     updateStatusMessage(`正在加载 ${grade}年级 Week ${week} 单词...`);
@@ -200,7 +198,91 @@ async function loadWordsForCurrentSelection() {
   }
 }
 
-// 构建用于已学词匹配的词汇索引（包含 id）
+// =============================================================
+// 3. 点击“查看错词本”：直接刷新主列表展示错题
+// =============================================================
+async function showWrongWordsList() {
+  try {
+    updateStatusMessage('正在获取错词本...');
+    isWrongWordsView = true; // 标记为错词视图
+
+    let allWrongWords = [];
+    let page = 0;
+    let pageSize = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await supabaseClient
+        .from('words')
+        .select('*')
+        .gt('test_time', 0)
+        .order('grade', { ascending: true })
+        .order('week', { ascending: true })
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const wrongs = data.filter(row => (row.correct_time || 0) < (row.test_time || 0));
+        allWrongWords = allWrongWords.concat(wrongs);
+
+        if (data.length < pageSize) hasMore = false;
+        else page++;
+      } else {
+        hasMore = false;
+      }
+    }
+
+    updateStatusMessage('');
+
+    if (allWrongWords.length === 0) {
+      wordsContainer.innerHTML = '<div class="empty-state">🎉 太棒了！目前没有错词记录。</div>';
+      return;
+    }
+
+    // 转换为 displayItems 格式
+    displayItems = allWrongWords.map((row, idx) => ({
+      id: row.id,
+      grade: row.grade,
+      week: row.week,
+      wordIndex: idx,
+      word: row.word,
+      sentence: row.sentence,
+      subtitle: `G${row.grade} W${row.week} (错 ${row.test_time - (row.correct_time || 0)}次)`,
+      learnedWords: []
+    }));
+
+    await buildGlobalWordIndexForStats();
+
+    displayItems.forEach(item => {
+      item.learnedWords = findLearnedWords(item.sentence);
+    });
+
+    checkboxStateMap.clear();
+    touchedMap.clear();
+    learnedCheckboxMap.clear();
+    learnedTouchedMap.clear();
+
+    displayItems.forEach(item => {
+      const key = `${item.grade}-${item.week}-${item.wordIndex}`;
+      checkboxStateMap.set(key, 0);
+      touchedMap.set(key, false);
+
+      item.learnedWords.forEach(lw => {
+        const lwKey = `${key}::${lw.word.toLowerCase()}`;
+        learnedCheckboxMap.set(lwKey, false);
+        learnedTouchedMap.set(lwKey, false);
+      });
+    });
+
+    renderWords();
+  } catch (err) {
+    console.error('获取错词失败:', err);
+    updateStatusMessage('❌ 获取错词失败');
+  }
+}
+
+// 构建用于已学词匹配的词汇索引
 async function buildGlobalWordIndexForStats() {
   let allRows = [];
   let page = 0;
@@ -239,9 +321,6 @@ async function buildGlobalWordIndexForStats() {
   });
 }
 
-// =============================================================
-// 例句分析
-// =============================================================
 function tokenizeSentence(sentence) {
   return sentence.split(/[^a-zA-Z']+/).filter(t => t.length > 0);
 }
@@ -266,17 +345,14 @@ function findLearnedWords(sentence) {
 }
 
 // =============================================================
-// 渲染单词列表与交互
+// 渲染单词列表（根据是否为错词视图动态展示标题）
 // =============================================================
 function renderWords() {
   if (!wordsContainer) return;
   if (displayItems.length === 0) {
-    wordsContainer.innerHTML = '<div class="empty-state">当前选择没有单词</div>';
+    wordsContainer.innerHTML = '<div class="empty-state">当前没有单词</div>';
     return;
   }
-
-  const grade = gradeSelect.value;
-  const week = weekSelect.value;
 
   wordsContainer.innerHTML = '';
   const groupEl = document.createElement('div');
@@ -287,11 +363,22 @@ function renderWords() {
 
   const title = document.createElement('span');
   title.className = 'group-title';
-  title.textContent = `${grade}年级 · Week ${week}`;
 
   const progress = document.createElement('span');
   progress.className = 'group-progress';
-  progress.dataset.groupKey = `${grade}-${week}`;
+
+  if (isWrongWordsView) {
+    // 🌟 如果是错词视图，标题显示“错题”
+    title.textContent = '⚠️ 错题本';
+    progress.textContent = `共 ${displayItems.length} 个错词`;
+  } else {
+    // 🌟 如果是常规选择，标题显示年级和 Week
+    const grade = gradeSelect.value;
+    const week = weekSelect.value;
+    title.textContent = `${grade}年级 · Week ${week}`;
+    progress.dataset.groupKey = `${grade}-${week}`;
+    updateGroupProgress(`${grade}-${week}`);
+  }
 
   header.appendChild(title);
   header.appendChild(progress);
@@ -308,8 +395,6 @@ function renderWords() {
 
   groupEl.appendChild(list);
   wordsContainer.appendChild(groupEl);
-
-  updateGroupProgress(`${grade}-${week}`);
 }
 
 function createWordCard(item, key) {
@@ -331,6 +416,16 @@ function createWordCard(item, key) {
   const sentenceSpan = document.createElement('span');
   sentenceSpan.className = 'sentence';
   sentenceSpan.textContent = item.sentence;
+
+  // 如果是在错词本里，可以额外显示具体的来源提示
+  if (isWrongWordsView && item.subtitle) {
+    const subSpan = document.createElement('span');
+    subSpan.style.fontSize = '0.75rem';
+    subSpan.style.color = '#c62828';
+    subSpan.style.fontWeight = '600';
+    subSpan.textContent = `来源: ${item.subtitle}`;
+    mainDiv.appendChild(subSpan);
+  }
 
   mainDiv.appendChild(wordSpan);
   mainDiv.appendChild(sentenceSpan);
@@ -388,7 +483,6 @@ function createWordCard(item, key) {
     mainDiv.appendChild(learnedBox);
   }
 
-  // 目标单词状态按钮
   const checkWrapper = document.createElement('div');
   checkWrapper.className = 'check-wrapper';
 
@@ -437,7 +531,7 @@ function toggleLearnedCheckbox(lwKey, element) {
 
 function toggleCheckboxByKey(key) {
   let currentState = checkboxStateMap.get(key) || 0;
-  let newState = (currentState + 1) % 3; // 0 -> 1 -> 2 -> 0
+  let newState = (currentState + 1) % 3;
   
   checkboxStateMap.set(key, newState);
   touchedMap.set(key, newState !== 0);
@@ -451,9 +545,11 @@ function toggleCheckboxByKey(key) {
     else { checkBox.textContent = ''; }
   }
 
-  const grade = gradeSelect.value;
-  const week = weekSelect.value;
-  updateGroupProgress(`${grade}-${week}`);
+  if (!isWrongWordsView) {
+    const grade = gradeSelect.value;
+    const week = weekSelect.value;
+    updateGroupProgress(`${grade}-${week}`);
+  }
   checkAutoDownload();
 }
 
@@ -473,24 +569,18 @@ function updateGroupProgress(groupKey) {
   }
 }
 
-// =============================================================
-// Supabase 统计提交（同时提交目标单词和例句中的已学词）
-// =============================================================
 async function submitResultsToSupabase() {
   const testedIds = [];
   const correctIds = [];
 
   displayItems.forEach(item => {
     const key = `${item.grade}-${item.week}-${item.wordIndex}`;
-    
-    // 1. 收集目标单词判定结果
     const state = checkboxStateMap.get(key) || 0;
     if (state !== 0 && item.id) {
       testedIds.push(item.id);
       if (state === 1) correctIds.push(item.id);
     }
 
-    // 2. 收集例句中的已学词判定结果
     if (item.learnedWords && item.learnedWords.length > 0) {
       item.learnedWords.forEach(lw => {
         const lwKey = `${key}::${lw.word.toLowerCase()}`;
@@ -501,9 +591,7 @@ async function submitResultsToSupabase() {
           lw.sources.forEach(source => {
             if (source.id) {
               testedIds.push(source.id);
-              if (isCorrect) {
-                correctIds.push(source.id);
-              }
+              if (isCorrect) correctIds.push(source.id);
             }
           });
         }
@@ -525,7 +613,6 @@ async function submitResultsToSupabase() {
   }
 }
 
-// 自动下载判定
 function checkAutoDownload() {
   if (!AUTO_DOWNLOAD) return;
   const allTargetTouched = displayItems.every(item => {
@@ -544,7 +631,12 @@ function checkAutoDownload() {
 // 事件绑定
 // =============================================================
 if (gradeSelect) gradeSelect.addEventListener('change', onGradeChange);
-if (weekSelect) weekSelect.addEventListener('change', loadWordsForCurrentSelection);
+if (weekSelect) weekSelect.addEventListener('change', () => {
+  isWrongWordsView = false;
+  loadWordsForCurrentSelection();
+});
+
+if (wrongWordsBtn) wrongWordsBtn.addEventListener('click', showWrongWordsList);
 if (downloadBtn) downloadBtn.addEventListener('click', () => downloadResults(false));
 
 if (submitBtn) {
@@ -562,7 +654,6 @@ if (statsModal) {
     if (e.target === statsModal) statsModal.classList.remove('show');
   });
 }
-if (statsDownload) statsDownload.addEventListener('click', downloadStats);
 
 if (clearAllBtn) {
   clearAllBtn.addEventListener('click', () => {
@@ -590,48 +681,26 @@ function downloadResults(isAuto = false) {
   if (displayItems.length === 0) return;
   submitResultsToSupabase();
   
-  const grade = gradeSelect.value;
-  const week = weekSelect.value;
-  const lines = [`听写结果 - Grade ${grade} Week ${week}`, `生成时间: ${new Date().toLocaleString()}`, '========================================'];
+  const titleName = isWrongWordsView ? '错题本' : `Grade_${gradeSelect.value}_Week_${weekSelect.value}`;
+  const lines = [`听写结果 - ${titleName}`, `生成时间: ${new Date().toLocaleString()}`, '========================================'];
   
   displayItems.forEach(item => {
     const key = `${item.grade}-${item.week}-${item.wordIndex}`;
     const state = checkboxStateMap.get(key) || 0;
     const res = state === 1 ? '✓ 正确' : (state === 2 ? '✗ 错误' : '— 未判');
     lines.push(`【${item.word}】 ${res}`);
-    lines.push(`  例句: ${item.sentence}`);
-
-    if (item.learnedWords && item.learnedWords.length > 0) {
-      lines.push(`  已学词判定:`);
-      item.learnedWords.forEach(lw => {
-        const lwKey = `${key}::${lw.word.toLowerCase()}`;
-        const lwTouched = learnedTouchedMap.get(lwKey) === true;
-        const lwCorrect = learnedCheckboxMap.get(lwKey) === true;
-        const lwResult = !lwTouched ? '—' : (lwCorrect ? '✓' : '✗');
-        lines.push(`    ${lwResult} ${lw.word}`);
-      });
-    }
-    lines.push('');
+    lines.push(`  例句: ${item.sentence}\n`);
   });
 
   const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `Grade${grade}_Week${week}_听写结果.txt`;
+  a.download = `${titleName}_听写结果.txt`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-
-  if (!isAuto) {
-    updateStatusMessage('📥 下载成功并已同步至数据库！');
-    setTimeout(() => updateStatusMessage(''), 2500);
-  }
-}
-
-function downloadStats() {
-  // 留空或按需实现统计下载
 }
 
 // 启动入口
