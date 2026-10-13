@@ -1,5 +1,5 @@
 // =============================================================
-// 听写应用逻辑 (年级 Week 动态联动 + 单字分页 + 30秒自动提交 + Excel 导出)
+// 听写应用逻辑 (年级 Week 联动 + 单字分页 + 30秒自动提交 + 下一个自动提交)
 // =============================================================
 
 const SUPABASE_URL = 'https://whqpuzxfheqwaniuqbbz.supabase.co';
@@ -7,19 +7,13 @@ const SUPABASE_ANON_KEY = 'sb_publishable_8eE1_U1jpk5G_tHcVtAjFg_Pz7lG9Q_';
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let gradeWeekMap = {};
-const AUTO_DOWNLOAD = true;
-
 let displayItems = [];
-let spellingData = {}; 
 let isWrongWordsView = false;
 let currentWordIndex = 0; // 单字分页索引
 
 // 状态映射
 const checkboxStateMap = new Map();
 const touchedMap = new Map();
-const learnedCheckboxMap = new Map();
-const learnedTouchedMap = new Map();
-let wordSourceIndex = new Map();
 
 // ---------- DOM 元素安全获取 ----------
 const gradeSelect = document.getElementById('gradeSelect');
@@ -27,15 +21,9 @@ const weekSelect = document.getElementById('weekSelect');
 const wordsContainer = document.getElementById('wordsContainer');
 const downloadBtn = document.getElementById('downloadBtn');
 const submitBtn = document.getElementById('submitBtn');
-const statsBtn = document.getElementById('statsBtn');
 const clearAllBtn = document.getElementById('clearAllBtn');
 const wrongWordsBtn = document.getElementById('wrongWordsBtn');
 const statusMsg = document.getElementById('statusMsg');
-
-const statsModal = document.getElementById('statsModal');
-const statsClose = document.getElementById('statsClose');
-const statsBody = document.getElementById('statsBody');
-const statsDownload = document.getElementById('statsDownload');
 
 // =============================================================
 // 1. 初始化：加载所有年级和 Week 的对应关系结构
@@ -134,7 +122,7 @@ function onGradeChange() {
 }
 
 // =============================================================
-// 2. 动态加载单词
+// 2. 动态加载当前年级和 Week 的单词
 // =============================================================
 async function loadWordsForCurrentSelection() {
   if (!gradeSelect || !weekSelect) return;
@@ -164,31 +152,16 @@ async function loadWordsForCurrentSelection() {
       wordIndex: idx,
       word: row.word,
       sentence: row.sentence,
-      subtitle: `Week ${week} 练习`,
-      learnedWords: []
+      subtitle: `Week ${week} 练习`
     }));
-
-    await buildGlobalWordIndexForStats();
-
-    displayItems.forEach(item => {
-      item.learnedWords = findLearnedWords(item.sentence);
-    });
 
     checkboxStateMap.clear();
     touchedMap.clear();
-    learnedCheckboxMap.clear();
-    learnedTouchedMap.clear();
 
     displayItems.forEach(item => {
       const key = `${item.grade}-${item.week}-${item.wordIndex}`;
       checkboxStateMap.set(key, 0);
       touchedMap.set(key, false);
-
-      item.learnedWords.forEach(lw => {
-        const lwKey = `${key}::${lw.word.toLowerCase()}`;
-        learnedCheckboxMap.set(lwKey, false);
-        learnedTouchedMap.set(lwKey, false);
-      });
     });
 
     renderWords();
@@ -200,7 +173,7 @@ async function loadWordsForCurrentSelection() {
 }
 
 // =============================================================
-// 3. 错词本视图
+// 3. 错词本视图加载
 // =============================================================
 async function showWrongWordsList() {
   try {
@@ -249,31 +222,16 @@ async function showWrongWordsList() {
       wordIndex: idx,
       word: row.word,
       sentence: row.sentence,
-      subtitle: `G${row.grade} W${row.week} (错 ${(row.test_time || 0) - (row.correct_time || 0)}次)`,
-      learnedWords: []
+      subtitle: `G${row.grade} W${row.week} (错 ${(row.test_time || 0) - (row.correct_time || 0)}次)`
     }));
-
-    await buildGlobalWordIndexForStats();
-
-    displayItems.forEach(item => {
-      item.learnedWords = findLearnedWords(item.sentence);
-    });
 
     checkboxStateMap.clear();
     touchedMap.clear();
-    learnedCheckboxMap.clear();
-    learnedTouchedMap.clear();
 
     displayItems.forEach(item => {
       const key = `${item.grade}-${item.week}-${item.wordIndex}`;
       checkboxStateMap.set(key, 0);
       touchedMap.set(key, false);
-
-      item.learnedWords.forEach(lw => {
-        const lwKey = `${key}::${lw.word.toLowerCase()}`;
-        learnedCheckboxMap.set(lwKey, false);
-        learnedTouchedMap.set(lwKey, false);
-      });
     });
 
     renderWords();
@@ -281,67 +239,6 @@ async function showWrongWordsList() {
     console.error('获取错词失败:', err);
     updateStatusMessage('❌ 获取错词失败');
   }
-}
-
-async function buildGlobalWordIndexForStats() {
-  let allRows = [];
-  let page = 0;
-  let pageSize = 1000;
-  let hasMore = true;
-
-  while (hasMore) {
-    const { data, error } = await supabaseClient
-      .from('words')
-      .select('id, grade, week, word')
-      .range(page * pageSize, (page + 1) * pageSize - 1);
-
-    if (error) return;
-    if (data && data.length > 0) {
-      allRows = allRows.concat(data);
-      if (data.length < pageSize) hasMore = false;
-      else page++;
-    } else {
-      hasMore = false;
-    }
-  }
-
-  spellingData = {};
-  wordSourceIndex = new Map();
-
-  allRows.forEach(row => {
-    const g = row.grade;
-    const w = row.week;
-    if (!spellingData[g]) spellingData[g] = {};
-    if (!spellingData[g][w]) spellingData[g][w] = { words: [] };
-    spellingData[g][w].words.push({ id: row.id, word: row.word });
-
-    const token = row.word.toLowerCase().trim();
-    if (!wordSourceIndex.has(token)) wordSourceIndex.set(token, []);
-    wordSourceIndex.get(token).push({ id: row.id, grade: g, week: w });
-  });
-}
-
-function tokenizeSentence(sentence) {
-  return sentence.split(/[^a-zA-Z']+/).filter(t => t.length > 0);
-}
-
-function findLearnedWords(sentence) {
-  const tokens = tokenizeSentence(sentence);
-  const seen = new Set();
-  const result = [];
-  tokens.forEach(token => {
-    const lower = token.toLowerCase();
-    if (lower.length < 2) return;
-    if (seen.has(lower)) return;
-    if (wordSourceIndex.has(lower)) {
-      seen.add(lower);
-      result.push({
-        word: token,
-        sources: wordSourceIndex.get(lower)
-      });
-    }
-  });
-  return result;
 }
 
 // =============================================================
@@ -393,7 +290,7 @@ function renderWords() {
   list.appendChild(card);
   groupEl.appendChild(list);
 
-  // 翻页导航栏
+  // 翻页导航栏（包含点击下一个自动提交）
   const navContainer = document.createElement('div');
   navContainer.style.cssText = 'display: flex; gap: 10px; margin-top: 14px; width: 100%;';
 
@@ -414,11 +311,9 @@ function renderWords() {
   nextBtn.textContent = '下一个 ➡️';
   nextBtn.disabled = currentWordIndex === displayItems.length - 1;
   nextBtn.style.opacity = currentWordIndex === displayItems.length - 1 ? '0.5' : '1';
-  nextBtn.addEventListener('click', () => {
-   if (currentWordIndex < displayItems.length - 1) {
-      // 🌟 点击“下一个”时自动同步当前进度到数据库
-      await submitResultsToSupabase();
-      
+  nextBtn.addEventListener('click', async () => {
+    if (currentWordIndex < displayItems.length - 1) {
+      await submitResultsToSupabase(); // 点击下一个时自动提交
       currentWordIndex++;
       renderWords();
     }
@@ -463,58 +358,6 @@ function createWordCard(item, key) {
   mainDiv.appendChild(wordSpan);
   mainDiv.appendChild(sentenceSpan);
 
-  if (item.learnedWords && item.learnedWords.length > 0) {
-    const learnedBox = document.createElement('div');
-    learnedBox.className = 'learned-words';
-
-    const learnedTitle = document.createElement('div');
-    learnedTitle.className = 'learned-words-title';
-    learnedTitle.textContent = '📖 已学词汇（点击勾选对/错）';
-    learnedBox.appendChild(learnedTitle);
-
-    const learnedList = document.createElement('div');
-    learnedList.className = 'learned-words-list';
-
-    item.learnedWords.forEach(lw => {
-      const lwKey = `${key}::${lw.word.toLowerCase()}`;
-      const lwItem = document.createElement('div');
-      lwItem.className = 'learned-word-item';
-
-      if (learnedTouchedMap.get(lwKey) === true) {
-        if (learnedCheckboxMap.get(lwKey) === true) lwItem.classList.add('correct');
-        else lwItem.classList.add('incorrect');
-      }
-
-      const textSpan = document.createElement('span');
-      textSpan.className = 'learned-word-text';
-      textSpan.textContent = lw.word;
-
-      const sourceSpan = document.createElement('span');
-      sourceSpan.className = 'learned-word-source';
-      sourceSpan.textContent = lw.sources.slice(0, 2).map(s => `G${s.grade}W${s.week}`).join('·');
-
-      const checkSpan = document.createElement('span');
-      checkSpan.className = 'learned-word-check';
-      if (learnedTouchedMap.get(lwKey) === true) {
-        checkSpan.textContent = learnedCheckboxMap.get(lwKey) ? '✓' : '✗';
-      }
-
-      lwItem.appendChild(textSpan);
-      lwItem.appendChild(sourceSpan);
-      lwItem.appendChild(checkSpan);
-
-      lwItem.addEventListener('click', (e) => {
-        e.stopPropagation();
-        toggleLearnedCheckbox(lwKey, lwItem);
-      });
-
-      learnedList.appendChild(lwItem);
-    });
-
-    learnedBox.appendChild(learnedList);
-    mainDiv.appendChild(learnedBox);
-  }
-
   const checkWrapper = document.createElement('div');
   checkWrapper.className = 'check-wrapper';
 
@@ -540,27 +383,6 @@ function createWordCard(item, key) {
   return card;
 }
 
-function toggleLearnedCheckbox(lwKey, element) {
-  const touched = learnedTouchedMap.get(lwKey) === true;
-  const isCorrect = learnedCheckboxMap.get(lwKey) === true;
-
-  let newTouched, newCorrect;
-  if (!touched) { newTouched = true; newCorrect = true; }
-  else if (isCorrect) { newTouched = true; newCorrect = false; }
-  else { newTouched = false; newCorrect = false; }
-
-  learnedTouchedMap.set(lwKey, newTouched);
-  learnedCheckboxMap.set(lwKey, newCorrect);
-
-  element.classList.remove('correct', 'incorrect');
-  const checkSpan = element.querySelector('.learned-word-check');
-  if (!newTouched) checkSpan.textContent = '';
-  else if (newCorrect) { element.classList.add('correct'); checkSpan.textContent = '✓'; }
-  else { element.classList.add('incorrect'); checkSpan.textContent = '✗'; }
-
-  checkAutoDownload();
-}
-
 function toggleCheckboxByKey(key) {
   let currentState = checkboxStateMap.get(key) || 0;
   let newState = (currentState + 1) % 3;
@@ -576,8 +398,6 @@ function toggleCheckboxByKey(key) {
     else if (newState === 2) { card.classList.add('incorrect'); checkBox.textContent = '✗'; }
     else { checkBox.textContent = ''; }
   }
-
-  checkAutoDownload();
 }
 
 // =============================================================
@@ -593,23 +413,6 @@ async function submitResultsToSupabase() {
     if (state !== 0 && item.id) {
       testedIds.push(item.id);
       if (state === 1) correctIds.push(item.id);
-    }
-
-    if (item.learnedWords && item.learnedWords.length > 0) {
-      item.learnedWords.forEach(lw => {
-        const lwKey = `${key}::${lw.word.toLowerCase()}`;
-        const isTouched = learnedTouchedMap.get(lwKey) === true;
-        const isCorrect = learnedCheckboxMap.get(lwKey) === true;
-
-        if (isTouched && lw.sources && lw.sources.length > 0) {
-          lw.sources.forEach(source => {
-            if (source.id) {
-              testedIds.push(source.id);
-              if (isCorrect) correctIds.push(source.id);
-            }
-          });
-        }
-      });
     }
   });
 
@@ -642,20 +445,6 @@ setInterval(async () => {
     }
   }
 }, 30 * 1000);
-
-function checkAutoDownload() {
-  if (!AUTO_DOWNLOAD) return;
-  const allTargetTouched = displayItems.every(item => {
-    const k = `${item.grade}-${item.week}-${item.wordIndex}`;
-    return touchedMap.get(k) === true;
-  });
-  const allLearnedTouched = Array.from(learnedTouchedMap.keys()).every(k => learnedTouchedMap.get(k) === true);
-  
-  if (allTargetTouched && allLearnedTouched && displayItems.length > 0) {
-    submitResultsToSupabase();
-    updateStatusMessage('✅ 本组全部判定完成，已同步！');
-  }
-}
 
 // =============================================================
 // 6. 导出 Excel（下载所有测试过的单词）
@@ -754,25 +543,12 @@ if (submitBtn) {
   });
 }
 
-if (statsBtn) statsBtn.addEventListener('click', () => { if (statsModal) statsModal.classList.add('show'); });
-if (statsClose) statsClose.addEventListener('click', () => { if (statsModal) statsModal.classList.remove('show'); });
-if (statsModal) {
-  statsModal.addEventListener('click', (e) => {
-    if (e.target === statsModal) statsModal.classList.remove('show');
-  });
-}
-
 if (clearAllBtn) {
   clearAllBtn.addEventListener('click', () => {
     displayItems.forEach(item => {
       const key = `${item.grade}-${item.week}-${item.wordIndex}`;
       checkboxStateMap.set(key, 0);
       touchedMap.set(key, false);
-      item.learnedWords.forEach(lw => {
-        const lwKey = `${key}::${lw.word.toLowerCase()}`;
-        learnedCheckboxMap.set(lwKey, false);
-        learnedTouchedMap.set(lwKey, false);
-      });
     });
     renderWords();
     updateStatusMessage('已清空当前勾选');
