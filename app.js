@@ -4,7 +4,7 @@
 
 // ---------- Supabase 配置 ----------
 const SUPABASE_URL = 'https://whqpuzxfheqwaniuqbbz.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR_REAL_ANON_KEY_HERE'; // 替换为你的真实 anon key
+const SUPABASE_ANON_KEY = 'sb_publishable_8eE1_U1jpk5G_tHcVtAjFg_Pz7lG9Q_'; // 替换为你的真实 anon key
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // 全局数据结构（从数据库动态组装）
