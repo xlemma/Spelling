@@ -1,5 +1,5 @@
 // =============================================================
-// 听写应用逻辑 (修复 Week 复选框显示与多选联动)
+// 听写应用逻辑 (无30s自动提交 + 按钮位于翻页后)
 // =============================================================
 
 const SUPABASE_URL = 'https://whqpuzxfheqwaniuqbbz.supabase.co';
@@ -73,8 +73,6 @@ async function initMetadata() {
       gradeWeekMap[g] = Array.from(gradeWeekMap[g]).sort((a, b) => a - b);
     });
 
-    console.log('✅ 成功加载年级与 Week 映射:', gradeWeekMap);
-
     await buildGlobalWordIndexForStats();
     renderGradeOptions();
     updateStatusMessage('');
@@ -102,12 +100,9 @@ function renderGradeOptions() {
   }
 }
 
-// 🌟 修复：确保 Week 复选框能够正确创建并显示在 DOM 中
 function onGradeChange() {
   if (!gradeSelect || !weekCheckboxContainer) return;
   const selectedGrade = gradeSelect.value;
-  
-  // 清空原有内容
   weekCheckboxContainer.innerHTML = '';
 
   if (!selectedGrade || !gradeWeekMap[selectedGrade]) {
@@ -116,17 +111,16 @@ function onGradeChange() {
   }
 
   const weeks = gradeWeekMap[selectedGrade];
-  console.log(`正在渲染 ${selectedGrade} 年级的 Weeks:`, weeks);
 
   weeks.forEach((w, index) => {
     const chip = document.createElement('label');
     chip.className = 'week-chip';
-    if (index === 0) chip.classList.add('selected'); // 默认选中第一个
+    if (index === 0) chip.classList.add('selected');
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.value = w;
-    if (index === 0) checkbox.checked = true; // 默认勾选第一个
+    if (index === 0) checkbox.checked = true;
 
     checkbox.addEventListener('change', () => {
       if (checkbox.checked) chip.classList.add('selected');
@@ -142,9 +136,7 @@ function onGradeChange() {
     weekCheckboxContainer.appendChild(chip);
   });
 
-  // 强制触发一次外部容器样式重绘，解决部分手机浏览器隐藏问题
   weekCheckboxContainer.style.display = 'flex';
-
   loadWordsForSelectedWeeks();
 }
 
@@ -404,7 +396,7 @@ function renderWords() {
   list.appendChild(card);
   groupEl.appendChild(list);
 
-  // 翻页导航栏
+  // 翻页导航栏（点击下一个自动提交）
   const navContainer = document.createElement('div');
   navContainer.style.cssText = 'display: flex; gap: 10px; margin-top: 14px; width: 100%;';
 
