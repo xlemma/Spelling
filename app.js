@@ -510,6 +510,39 @@ function checkAutoDownload() {
 // =============================================================
 // 事件绑定
 // =============================================================
+if (gradeSelect) gradeSelect.addEventListener('change', onGradeChange);
+if (weekSelect) weekSelect.addEventListener('change', loadWordsForCurrentSelection);
+if (downloadBtn) downloadBtn.addEventListener('click', () => downloadResults(false));
+
+if (submitBtn) {
+  submitBtn.addEventListener('click', async () => {
+    await submitResultsToSupabase();
+    updateStatusMessage('✅ 进度已成功提交至 Supabase 数据库！');
+    setTimeout(() => updateStatusMessage(''), 2500);
+  });
+}
+
+if (statsBtn) statsBtn.addEventListener('click', () => { if (statsModal) statsModal.classList.add('show'); });
+if (statsClose) statsClose.addEventListener('click', () => { if (statsModal) statsModal.classList.remove('show'); });
+if (statsModal) {
+  statsModal.addEventListener('click', (e) => {
+    if (e.target === statsModal) statsModal.classList.remove('show');
+  });
+}
+if (statsDownload) statsDownload.addEventListener('click', downloadStats);
+
+if (clearAllBtn) {
+  clearAllBtn.addEventListener('click', () => {
+    displayItems.forEach(item => {
+      const key = `${item.grade}-${item.week}-${item.wordIndex}`;
+      checkboxStateMap.set(key, 0);
+      touchedMap.set(key, false);
+    });
+    renderWords();
+    updateStatusMessage('已清空所有勾选');
+    setTimeout(() => updateStatusMessage(''), 1500);
+  });
+}
 gradeSelect.addEventListener('change', () => {
   onGradeChange();
 });
