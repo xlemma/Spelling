@@ -1,5 +1,5 @@
 // =============================================================
-// 听写应用逻辑 (修复 Week 加载与多选联动)
+// 听写应用逻辑 (修复 Week 复选框显示与多选联动)
 // =============================================================
 
 const SUPABASE_URL = 'https://whqpuzxfheqwaniuqbbz.supabase.co';
@@ -63,7 +63,7 @@ async function initMetadata() {
 
     gradeWeekMap = {};
     allRows.forEach(row => {
-      const g = String(row.grade); // 统一转换为字符串键
+      const g = String(row.grade);
       const w = Number(row.week);
       if (!gradeWeekMap[g]) gradeWeekMap[g] = new Set();
       gradeWeekMap[g].add(w);
@@ -73,11 +73,9 @@ async function initMetadata() {
       gradeWeekMap[g] = Array.from(gradeWeekMap[g]).sort((a, b) => a - b);
     });
 
-    console.log('解析出的年级与Week映射:', gradeWeekMap);
+    console.log('✅ 成功加载年级与 Week 映射:', gradeWeekMap);
 
-    // 先构建全局词汇索引
     await buildGlobalWordIndexForStats();
-
     renderGradeOptions();
     updateStatusMessage('');
   } catch (err) {
@@ -100,13 +98,16 @@ function renderGradeOptions() {
 
   if (grades.length > 0) {
     gradeSelect.value = grades[0];
-    onGradeChange(); // 主动触发第一个年级的 Week 渲染
+    onGradeChange();
   }
 }
 
+// 🌟 修复：确保 Week 复选框能够正确创建并显示在 DOM 中
 function onGradeChange() {
   if (!gradeSelect || !weekCheckboxContainer) return;
   const selectedGrade = gradeSelect.value;
+  
+  // 清空原有内容
   weekCheckboxContainer.innerHTML = '';
 
   if (!selectedGrade || !gradeWeekMap[selectedGrade]) {
@@ -115,16 +116,17 @@ function onGradeChange() {
   }
 
   const weeks = gradeWeekMap[selectedGrade];
+  console.log(`正在渲染 ${selectedGrade} 年级的 Weeks:`, weeks);
 
-  weeks.forEach(w => {
+  weeks.forEach((w, index) => {
     const chip = document.createElement('label');
     chip.className = 'week-chip';
-    if (w === weeks[0]) chip.classList.add('selected'); // 默认选中第一个
+    if (index === 0) chip.classList.add('selected'); // 默认选中第一个
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.value = w;
-    if (w === weeks[0]) checkbox.checked = true; // 默认勾选第一个
+    if (index === 0) checkbox.checked = true; // 默认勾选第一个
 
     checkbox.addEventListener('change', () => {
       if (checkbox.checked) chip.classList.add('selected');
@@ -132,10 +134,16 @@ function onGradeChange() {
       loadWordsForSelectedWeeks();
     });
 
+    const spanText = document.createElement('span');
+    spanText.textContent = `Week ${w}`;
+
     chip.appendChild(checkbox);
-    chip.appendChild(document.createTextNode(`Week ${w}`));
+    chip.appendChild(spanText);
     weekCheckboxContainer.appendChild(chip);
   });
+
+  // 强制触发一次外部容器样式重绘，解决部分手机浏览器隐藏问题
+  weekCheckboxContainer.style.display = 'flex';
 
   loadWordsForSelectedWeeks();
 }
