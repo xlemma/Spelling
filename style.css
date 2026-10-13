@@ -38,7 +38,7 @@ h1 {
 .subhead {
   font-size: 0.9rem;
   color: #6b7a8f;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   border-left: 4px solid #4f9cf7;
   padding-left: 12px;
   background: #f0f6ff;
@@ -60,6 +60,26 @@ h1 {
   border: 1px solid #c3e6d3;
 }
 
+.top-action-bar {
+  margin-bottom: 16px;
+}
+
+.btn-block {
+  width: 100%;
+  flex: 1 1 100%;
+}
+
+.btn-warning {
+  background: #f59e0b;
+  border-color: #f59e0b;
+  color: white;
+  box-shadow: 0 8px 16px -6px rgba(245, 158, 11, 0.3);
+}
+
+.btn-warning:active {
+  background: #d97706;
+}
+
 .panel {
   background: #f8fafd;
   border-radius: 24px;
@@ -74,12 +94,8 @@ h1 {
   letter-spacing: 0.5px;
   color: #4a5b6f;
   margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
 }
 
-/* 下拉框布局 */
 .select-group {
   display: flex;
   gap: 12px;
@@ -138,15 +154,6 @@ h1 {
   color: #1e2b3c;
 }
 
-.group-sub {
-  font-size: 0.78rem;
-  color: #6b7a8f;
-  background: #eef4fd;
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-weight: 500;
-}
-
 .group-progress {
   font-size: 0.78rem;
   font-weight: 600;
@@ -163,11 +170,10 @@ h1 {
   background: #ffffff;
   border: 1.5px solid #e9eef4;
   border-radius: 20px;
-  padding: 14px 16px;
+  padding: 16px 18px;
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  transition: all 0.1s ease;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
 }
 
@@ -190,7 +196,7 @@ h1 {
 }
 
 .word-text {
-  font-size: 1.5rem;
+  font-size: 1.6rem;
   font-weight: 700;
   color: #0f1e2f;
   line-height: 1.2;
@@ -198,7 +204,7 @@ h1 {
 }
 
 .sentence {
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   color: #51657b;
   font-style: italic;
   background: #f4f8ff;
@@ -209,7 +215,6 @@ h1 {
   word-break: break-word;
 }
 
-/* 已学词汇 */
 .learned-words {
   margin-top: 8px;
   background: #fefce8;
@@ -222,7 +227,6 @@ h1 {
   font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
   color: #9a7b1a;
   margin-bottom: 6px;
 }
@@ -340,7 +344,7 @@ h1 {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 8px;
+  margin-top: 14px;
   position: sticky;
   bottom: 12px;
   background: rgba(255, 255, 255, 0.92);
@@ -351,10 +355,10 @@ h1 {
 
 .btn {
   flex: 1 1 120px;
-  padding: 15px 10px;
-  font-size: 1rem;
+  padding: 14px 10px;
+  font-size: 0.95rem;
   font-weight: 600;
-  border-radius: 18px;
+  border-radius: 16px;
   border: none;
   cursor: pointer;
   display: flex;
@@ -383,15 +387,15 @@ h1 {
   font-size: 0.85rem;
   color: #1e5bbf;
   font-weight: 500;
-  margin-top: 12px;
-  min-height: 24px;
+  margin-top: 10px;
+  min-height: 22px;
 }
 
 .footer-note {
   font-size: 0.75rem;
   color: #8a9aad;
   text-align: center;
-  margin-top: 16px;
+  margin-top: 12px;
 }
 
 .empty-state {
@@ -401,7 +405,7 @@ h1 {
   font-size: 0.95rem;
 }
 
-/* 弹窗样式略（保持不变） */
+/* 弹窗样式 */
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15, 30, 47, 0.55); z-index: 100; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(3px); }
 .modal-overlay.show { display: flex; }
 .modal { background: white; border-radius: 24px; width: 100%; max-width: 640px; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -419,24 +423,3 @@ h1 {
 .stats-table td.green-cell { color: #2e7d5e; font-weight: 600; }
 .stats-table td.red-cell { color: #c62828; font-weight: 600; }
 .modal-close { width: 34px; height: 34px; border-radius: 12px; border: none; background: white; cursor: pointer; }
-
-/* 顶部错词本栏 */
-.top-action-bar {
-  margin-bottom: 20px;
-}
-
-.btn-block {
-  width: 100%;
-  flex: 1 1 100%;
-}
-
-.btn-warning {
-  background: #f59e0b;
-  border-color: #f59e0b;
-  color: white;
-  box-shadow: 0 8px 16px -6px rgba(245, 158, 11, 0.3);
-}
-
-.btn-warning:active {
-  background: #d97706;
-}
