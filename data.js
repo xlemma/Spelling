@@ -1,5 +1,5 @@
 
-    const spellingData = {
+   export const spellingData = {
       1: {
         1: { title: "Week 1", subtitle: "Sight words and -at family", words: [
           { word: "the", sentence: "The cat is on the mat." },
