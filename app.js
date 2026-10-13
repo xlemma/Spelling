@@ -1,5 +1,5 @@
 // =============================================================
-// 听写应用逻辑 (Supabase 动态加载版)
+// 听写应用逻辑 (Supabase 动态加载与统计提交版)
 // =============================================================
 
 // ---------- Supabase 配置 ----------
@@ -34,6 +34,7 @@ const gradeChipsEl = document.getElementById('gradeChips');
 const weekChipsEl = document.getElementById('weekChips');
 const wordsContainer = document.getElementById('wordsContainer');
 const downloadBtn = document.getElementById('downloadBtn');
+const submitBtn = document.getElementById('submitBtn'); // 👈 新增提交按钮
 const statsBtn = document.getElementById('statsBtn');
 const clearAllBtn = document.getElementById('clearAllBtn');
 const statusMsg = document.getElementById('statusMsg');
@@ -52,7 +53,6 @@ async function loadDataFromSupabase() {
   try {
     updateStatusMessage('正在从数据库加载单词...');
     
-    // 从 words 表中获取所有记录，按 grade 和 week 排序
     const { data, error } = await supabaseClient
       .from('words')
       .select('*')
@@ -63,7 +63,6 @@ async function loadDataFromSupabase() {
 
     spellingData = {};
 
-    // 将平铺的数据库行组装回嵌套的 spellingData 结构
     data.forEach(row => {
       const g = row.grade;
       const w = row.week;
@@ -73,7 +72,7 @@ async function loadDataFromSupabase() {
       }
       if (!spellingData[g][w]) {
         spellingData[g][w] = {
-          subtitle: `Week ${w} 练习`, // 如果数据库有 subtitle 字段可改为 row.subtitle
+          subtitle: `Week ${w} 练习`,
           words: []
         };
       }
@@ -92,6 +91,43 @@ async function loadDataFromSupabase() {
     console.error('加载 Supabase 数据失败:', err);
     updateStatusMessage('❌ 加载数据库失败，请检查控制台');
     return false;
+  }
+}
+
+// =============================================================
+// 将测试结果（测试次数 +1，正确次数 +1）提交到 Supabase
+// =============================================================
+async function submitResultsToSupabase() {
+  const testedIds = [];
+  const correctIds = [];
+
+  displayItems.forEach(item => {
+    const key = `${item.grade}-${item.week}-${item.wordIndex}`;
+    const isTouched = touchedMap.get(key) === true;
+    const isCorrect = checkboxStateMap.get(key) === true;
+
+    if (isTouched && item.id) {
+      testedIds.push(item.id);
+      if (isCorrect) {
+        correctIds.push(item.id);
+      }
+    }
+  });
+
+  if (testedIds.length === 0) {
+    return;
+  }
+
+  try {
+    const { error } = await supabaseClient.rpc('update_word_stats', {
+      p_tested_ids: testedIds,
+      p_correct_ids: correctIds
+    });
+
+    if (error) throw error;
+    console.log(`✅ 统计数据已同步：测试 ${testedIds.length} 词，正确 ${correctIds.length} 词。`);
+  } catch (err) {
+    console.error('❌ 同步统计到 Supabase 失败:', err);
   }
 }
 
@@ -247,6 +283,7 @@ function rebuildDisplay() {
     const weekData = spellingData[grade][week];
     weekData.words.forEach((item, idx) => {
       displayItems.push({
+        id: item.id,
         grade,
         week,
         wordIndex: idx,
@@ -525,7 +562,7 @@ function checkAutoDownload() {
   );
   if (allTargetTouched && allLearnedTouched && displayItems.length > 0) {
     downloadResults(true);
-    updateStatusMessage('✅ 全部判定完成，已自动下载！');
+    updateStatusMessage('✅ 全部判定完成，已自动下载并同步！');
     displayItems.forEach(item => {
       const k = `${item.grade}-${item.week}-${item.wordIndex}`;
       touchedMap.set(k, false);
@@ -730,6 +767,9 @@ function downloadResults(isAuto = false) {
     return;
   }
 
+  // 📥 自动提交测试结果到 Supabase (测过次数+1，正确次数+1)
+  submitResultsToSupabase();
+
   let correctCount = 0;
   let learnedCorrectCount = 0;
   let learnedWrongCount = 0;
@@ -809,7 +849,7 @@ function downloadResults(isAuto = false) {
   URL.revokeObjectURL(url);
 
   if (!isAuto) {
-    updateStatusMessage('📥 下载成功！');
+    updateStatusMessage('📥 下载成功并已同步至数据库！');
     setTimeout(() => updateStatusMessage(''), 2500);
   }
 }
@@ -822,6 +862,14 @@ function updateStatusMessage(msg) {
 }
 
 downloadBtn.addEventListener('click', () => downloadResults(false));
+
+// 🚀 手动提交按钮事件监听
+submitBtn.addEventListener('click', async () => {
+  await submitResultsToSupabase();
+  updateStatusMessage('✅ 进度已成功提交至 Supabase 数据库！');
+  setTimeout(() => updateStatusMessage(''), 2500);
+});
+
 statsBtn.addEventListener('click', showStats);
 statsClose.addEventListener('click', () => statsModal.classList.remove('show'));
 statsModal.addEventListener('click', (e) => {
