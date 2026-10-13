@@ -678,76 +678,91 @@ function updateStatusMessage(msg) {
 }
 
 // =============================================================
-// 下载结果：包含所有单词、例句、正确次数和错误次数
+// 直接从数据库调出所有已测单词（test_time > 0），导出为 Excel
 // =============================================================
-function downloadResults(isAuto = false) {
-  if (displayItems.length === 0) return;
-  submitResultsToSupabase();
-  
-  const titleName = isWrongWordsView ? '错题本' : `Grade_${gradeSelect.value}_Week_${weekSelect.value}`;
-  const lines = [
-    `听写结果统计报告 - ${titleName}`,
-    `生成时间: ${new Date().toLocaleString()}`,
-    '========================================',
-    ''
-  ];
-  
-  let correctTotal = 0;
-  let wrongTotal = 0;
-  let unjudgedTotal = 0;
-
-  displayItems.forEach((item, idx) => {
-    const key = `${item.grade}-${item.week}-${item.wordIndex}`;
-    const state = checkboxStateMap.get(key) || 0;
+async function downloadResults() {
+  try {
+    updateStatusMessage('正在从数据库获取所有已学单词数据...');
     
-    let resText = '— 未判';
-    if (state === 1) {
-      correctTotal++;
-      resText = '✓ 正确';
-    } else if (state === 2) {
-      wrongTotal++;
-      resText = '✗ 错误';
-    } else {
-      unjudgedTotal++;
+    let allTestedWords = [];
+    let page = 0;
+    let pageSize = 1000;
+    let hasMore = true;
+
+    // 分页循环抓取所有 test_time > 0 的单词
+    while (hasMore) {
+      const { data, error } = await supabaseClient
+        .from('words')
+        .select('*')
+        .gt('test_time', 0) // 获取测试次数大于0的单词
+        .order('grade', { ascending: true })
+        .order('week', { ascending: true })
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        allTestedWords = allTestedWords.concat(data);
+        if (data.length < pageSize) hasMore = false;
+        else page++;
+      } else {
+        hasMore = false;
+      }
     }
 
-    // 计算当前单词的对错表现（如果有历史统计或当前轮次的体现）
-    // 这里展示本次判定的结果以及提示
-    lines.push(`[${idx + 1}] 单词: ${item.word}`);
-    lines.push(`    例句: ${item.sentence}`);
-    lines.push(`    本次判定: ${resText}`);
-    
-    if (item.learnedWords && item.learnedWords.length > 0) {
-      lines.push(`    包含已学词:`);
-      item.learnedWords.forEach(lw => {
-        const lwKey = `${key}::${lw.word.toLowerCase()}`;
-        const lwTouched = learnedTouchedMap.get(lwKey) === true;
-        const lwCorrect = learnedCheckboxMap.get(lwKey) === true;
-        const lwRes = !lwTouched ? '— 未判' : (lwCorrect ? '✓ 正确' : '✗ 错误');
-        lines.push(`      - ${lw.word} (${lwRes})`);
-      });
+    updateStatusMessage('');
+
+    if (allTestedWords.length === 0) {
+      updateStatusMessage('没有找到任何已测试过的单词记录');
+      setTimeout(() => updateStatusMessage(''), 2500);
+      return;
     }
-    lines.push('----------------------------------------');
-  });
 
-  lines.push('');
-  lines.push('========================================');
-  lines.push(`统计汇总: 总计 ${displayItems.length} 词 | 正确: ${correctTotal} | 错误: ${wrongTotal} | 未判: ${unjudgedTotal}`);
+    // 组装成 Excel 所需的结构化数据
+    const excelData = allTestedWords.map((item, index) => {
+      const testTime = item.test_time || 0;
+      const correctTime = item.correct_time || 0;
+      const wrongTime = testTime - correctTime; // 错误次数 = 测试次数 - 正确次数
 
-  const content = lines.join('\n');
-  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${titleName}_详细听写报告.txt`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+      return {
+        "序号": index + 1,
+        "年级": item.grade,
+        "Week": item.week,
+        "单词": item.word,
+        "例句": item.sentence,
+        "测试次数": testTime,
+        "正确次数": correctTime,
+        "错误次数": wrongTime
+      };
+    });
 
-  if (!isAuto) {
-    updateStatusMessage('📥 下载成功并已同步至数据库！');
+    // 创建 Excel 工作簿
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "已学单词统计");
+
+    // 优化列宽，使表格更加美观易读
+    worksheet['!cols'] = [
+      {wch: 6},  // 序号
+      {wch: 6},  // 年级
+      {wch: 8},  // Week
+      {wch: 15}, // 单词
+      {wch: 45}, // 例句
+      {wch: 10}, // 测试次数
+      {wch: 10}, // 正确次数
+      {wch: 10}  // 错误次数
+    ];
+
+    // 导出 Excel 文件
+    const fileName = `已学单词统计报告_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+
+    updateStatusMessage('📥 Excel 表格下载成功！');
     setTimeout(() => updateStatusMessage(''), 2500);
+
+  } catch (err) {
+    console.error('导出 Excel 失败:', err);
+    updateStatusMessage('❌ 导出 Excel 失败，请检查控制台');
   }
 }
 
