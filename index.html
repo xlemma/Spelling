@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-  <title>英语听写 · 多选 Week + 例句词汇判定版</title>
+  <title>英语听写 · 多选 Week 版</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -45,11 +45,12 @@
 
     <div id="wordsContainer"></div>
 
+    <!-- 操作按钮区（已移除 sticky 固定，紧跟在内容后面） -->
     <div class="action-buttons">
       <button class="btn btn-primary" id="downloadBtn">📥 导出 Excel</button>
-      <button class="btn btn-success" id="submitBtn">🚀 提交进度</button>
       <button class="btn" id="clearAllBtn">🧹 清空勾选</button>
     </div>
+    
     <div class="status-msg" id="statusMsg"></div>
     <div class="footer-note">点1次=对(✓) · 点2次=错(✗) · 点3次=空 · 点击“下一个”自动提交</div>
   </div>
