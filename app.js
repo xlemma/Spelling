@@ -1,5 +1,5 @@
 // =============================================================
-// 听写应用逻辑 (Supabase 动态加载与统计提交版)
+// 听写应用逻辑 (Supabase 动态加载与多态点击循环版)
 // =============================================================
 
 // ---------- Supabase 配置 ----------
@@ -17,7 +17,7 @@ let selectedWeeks = new Set([1]);
 
 let displayItems = [];
 
-// 每个目标词的勾选状态（是否写对）
+// 每个目标词的状态：0 = 未判定/空, 1 = 对 (✓), 2 = 错 (✗)
 const checkboxStateMap = new Map();
 // 每个目标词是否被判定过
 const touchedMap = new Map();
@@ -34,7 +34,7 @@ const gradeChipsEl = document.getElementById('gradeChips');
 const weekChipsEl = document.getElementById('weekChips');
 const wordsContainer = document.getElementById('wordsContainer');
 const downloadBtn = document.getElementById('downloadBtn');
-const submitBtn = document.getElementById('submitBtn'); // 👈 新增提交按钮
+const submitBtn = document.getElementById('submitBtn');
 const statsBtn = document.getElementById('statsBtn');
 const clearAllBtn = document.getElementById('clearAllBtn');
 const statusMsg = document.getElementById('statusMsg');
@@ -95,7 +95,7 @@ async function loadDataFromSupabase() {
 }
 
 // =============================================================
-// 将测试结果（测试次数 +1，正确次数 +1）提交到 Supabase
+// 将测试结果（test_time +1, correct_time +1）提交到 Supabase
 // =============================================================
 async function submitResultsToSupabase() {
   const testedIds = [];
@@ -103,13 +103,12 @@ async function submitResultsToSupabase() {
 
   displayItems.forEach(item => {
     const key = `${item.grade}-${item.week}-${item.wordIndex}`;
-    const isTouched = touchedMap.get(key) === true;
-    const isCorrect = checkboxStateMap.get(key) === true;
+    const state = checkboxStateMap.get(key) || 0; // 0: 未判定, 1: 对, 2: 错
 
-    if (isTouched && item.id) {
-      testedIds.push(item.id);
-      if (isCorrect) {
-        correctIds.push(item.id);
+    if (state !== 0 && item.id) {
+      testedIds.push(item.id); // 测过一次 (test_time + 1)
+      if (state === 1) {
+        correctIds.push(item.id); // 写对一次 (correct_time + 1)
       }
     }
   });
@@ -297,7 +296,7 @@ function rebuildDisplay() {
 
   displayItems.forEach(item => {
     const key = `${item.grade}-${item.week}-${item.wordIndex}`;
-    if (!checkboxStateMap.has(key)) checkboxStateMap.set(key, false);
+    if (!checkboxStateMap.has(key)) checkboxStateMap.set(key, 0); // 0: 未判定
     if (!touchedMap.has(key)) touchedMap.set(key, false);
 
     item.learnedWords.forEach(lw => {
@@ -386,8 +385,9 @@ function createWordCard(item, key) {
   card.className = 'word-card';
   card.dataset.key = key;
 
-  const isCorrect = checkboxStateMap.get(key) === true;
-  if (isCorrect) card.classList.add('correct');
+  const state = checkboxStateMap.get(key) || 0;
+  if (state === 1) card.classList.add('correct');
+  if (state === 2) card.classList.add('incorrect');
 
   const mainDiv = document.createElement('div');
   mainDiv.className = 'word-main';
@@ -468,11 +468,18 @@ function createWordCard(item, key) {
   checkWrapper.className = 'check-wrapper';
 
   const label = document.createElement('label');
-  label.textContent = '✔️对';
+  label.textContent = '判定';
 
   const checkBox = document.createElement('div');
   checkBox.className = 'check-box';
-  checkBox.textContent = isCorrect ? '✓' : '';
+  if (state === 1) {
+    checkBox.textContent = '✓';
+  } else if (state === 2) {
+    checkBox.textContent = '✗';
+  } else {
+    checkBox.textContent = '';
+  }
+
   checkBox.addEventListener('click', (e) => {
     e.stopPropagation();
     toggleCheckboxByKey(key);
@@ -522,21 +529,33 @@ function toggleLearnedCheckbox(lwKey, element) {
 }
 
 // =============================================================
-// 切换目标词勾选
+// 切换目标词状态：点击循环 0 (未判定) -> 1 (对) -> 2 (错) -> 0 (未判定)
 // =============================================================
 function toggleCheckboxByKey(key) {
-  const newVal = !checkboxStateMap.get(key);
-  checkboxStateMap.set(key, newVal);
-  touchedMap.set(key, true);
+  let currentState = checkboxStateMap.get(key) || 0;
+  let newState = (currentState + 1) % 3; // 0 -> 1 -> 2 -> 0
+  
+  checkboxStateMap.set(key, newState);
+  
+  if (newState !== 0) {
+    touchedMap.set(key, true);
+  } else {
+    touchedMap.set(key, false);
+  }
 
   const card = document.querySelector(`.word-card[data-key="${key}"]`);
   if (card) {
-    if (newVal) {
+    card.classList.remove('correct', 'incorrect');
+    const checkBox = card.querySelector('.check-box');
+    
+    if (newState === 1) {
       card.classList.add('correct');
-      card.querySelector('.check-box').textContent = '✓';
+      checkBox.textContent = '✓';
+    } else if (newState === 2) {
+      card.classList.add('incorrect');
+      checkBox.textContent = '✗';
     } else {
-      card.classList.remove('correct');
-      card.querySelector('.check-box').textContent = '';
+      checkBox.textContent = '';
     }
   }
 
@@ -580,8 +599,9 @@ function updateGroupProgress(groupKey, items) {
   let touched = 0;
   items.forEach(item => {
     const k = `${item.grade}-${item.week}-${item.wordIndex}`;
-    if (checkboxStateMap.get(k)) correct++;
-    if (touchedMap.get(k)) touched++;
+    const state = checkboxStateMap.get(k) || 0;
+    if (state === 1) correct++;
+    if (state !== 0) touched++;
   });
   const progressEl = document.querySelector(`.group-progress[data-group-key="${groupKey}"]`);
   if (progressEl) {
@@ -767,10 +787,11 @@ function downloadResults(isAuto = false) {
     return;
   }
 
-  // 📥 自动提交测试结果到 Supabase (测过次数+1，正确次数+1)
+  // 📥 提交统计数据到 Supabase
   submitResultsToSupabase();
 
   let correctCount = 0;
+  let wrongCount = 0;
   let learnedCorrectCount = 0;
   let learnedWrongCount = 0;
   let learnedTotal = 0;
@@ -808,10 +829,17 @@ function downloadResults(isAuto = false) {
 
     group.items.forEach(item => {
       const key = `${item.grade}-${item.week}-${item.wordIndex}`;
-      const isCorrect = checkboxStateMap.get(key) === true;
-      if (isCorrect) correctCount++;
+      const state = checkboxStateMap.get(key) || 0;
+      
+      let result = '— 未判';
+      if (state === 1) {
+        correctCount++;
+        result = '✓ 正确';
+      } else if (state === 2) {
+        wrongCount++;
+        result = '✗ 错误';
+      }
 
-      const result = isCorrect ? '✓ 正确' : '✗ 错误';
       lines.push(`【${item.word}】 ${result}`);
       lines.push(`  例句: ${item.sentence}`);
 
@@ -834,6 +862,10 @@ function downloadResults(isAuto = false) {
       lines.push('');
     });
   });
+
+  lines.push('========================================');
+  lines.push(`目标单词: ${displayItems.length} 词 | 正确: ${correctCount} | 错误: ${wrongCount}`);
+  lines.push(`已学词汇: 共出现 ${learnedTotal} 次 | 对: ${learnedCorrectCount} | 错: ${learnedWrongCount} | 未判: ${learnedTotal - learnedCorrectCount - learnedWrongCount}`);
 
   const content = lines.join('\n');
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
@@ -863,7 +895,6 @@ function updateStatusMessage(msg) {
 
 downloadBtn.addEventListener('click', () => downloadResults(false));
 
-// 🚀 手动提交按钮事件监听
 submitBtn.addEventListener('click', async () => {
   await submitResultsToSupabase();
   updateStatusMessage('✅ 进度已成功提交至 Supabase 数据库！');
@@ -880,7 +911,7 @@ statsDownload.addEventListener('click', downloadStats);
 clearAllBtn.addEventListener('click', () => {
   displayItems.forEach(item => {
     const key = `${item.grade}-${item.week}-${item.wordIndex}`;
-    checkboxStateMap.set(key, false);
+    checkboxStateMap.set(key, 0);
     touchedMap.set(key, false);
     item.learnedWords.forEach(lw => {
       const lwKey = `${key}::${lw.word.toLowerCase()}`;
@@ -890,7 +921,7 @@ clearAllBtn.addEventListener('click', () => {
   });
 
   document.querySelectorAll('.word-card').forEach(card => {
-    card.classList.remove('correct');
+    card.classList.remove('correct', 'incorrect');
     const cb = card.querySelector('.check-box');
     if (cb) cb.textContent = '';
     card.querySelectorAll('.learned-word-item').forEach(lwItem => {
