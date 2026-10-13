@@ -415,7 +415,10 @@ function renderWords() {
   nextBtn.disabled = currentWordIndex === displayItems.length - 1;
   nextBtn.style.opacity = currentWordIndex === displayItems.length - 1 ? '0.5' : '1';
   nextBtn.addEventListener('click', () => {
-    if (currentWordIndex < displayItems.length - 1) {
+   if (currentWordIndex < displayItems.length - 1) {
+      // 🌟 点击“下一个”时自动同步当前进度到数据库
+      await submitResultsToSupabase();
+      
       currentWordIndex++;
       renderWords();
     }
