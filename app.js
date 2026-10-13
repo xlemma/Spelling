@@ -1,5 +1,5 @@
 // =============================================================
-// 听写应用逻辑 (年级 Week 联动 + 单字分页 + 点击下一个自动提交)
+// 听写应用逻辑 (年级单选 + Week 多选 + 单字分页)
 // =============================================================
 
 const SUPABASE_URL = 'https://whqpuzxfheqwaniuqbbz.supabase.co';
@@ -9,7 +9,7 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let gradeWeekMap = {};
 let displayItems = [];
 let isWrongWordsView = false;
-let currentWordIndex = 0; // 单字分页索引
+let currentWordIndex = 0;
 
 // 状态映射
 const checkboxStateMap = new Map();
@@ -17,7 +17,10 @@ const touchedMap = new Map();
 
 // ---------- DOM 元素安全获取 ----------
 const gradeSelect = document.getElementById('gradeSelect');
-const weekSelect = document.getElementById('weekSelect');
+const weekCheckboxContainer = document.getElementById('weekCheckboxContainer');
+const selectAllWeeksBtn = document.getElementById('selectAllWeeks');
+const clearAllWeeksBtn = document.getElementById('clearAllWeeks');
+
 const wordsContainer = document.getElementById('wordsContainer');
 const downloadBtn = document.getElementById('downloadBtn');
 const submitBtn = document.getElementById('submitBtn');
@@ -26,7 +29,7 @@ const wrongWordsBtn = document.getElementById('wrongWordsBtn');
 const statusMsg = document.getElementById('statusMsg');
 
 // =============================================================
-// 1. 初始化：加载所有年级和 Week 的对应关系结构 (含 iPhone 兼容)
+// 1. 初始化：加载所有年级和 Week 的对应关系结构
 // =============================================================
 async function initMetadata() {
   try {
@@ -71,7 +74,7 @@ async function initMetadata() {
     updateStatusMessage('');
   } catch (err) {
     console.error('初始化菜单失败:', err);
-    updateStatusMessage('❌ 初始化失败，请检查网络或 HTTPS 环境');
+    updateStatusMessage('❌ 初始化失败，请检查网络');
   }
 }
 
@@ -93,54 +96,79 @@ function renderGradeOptions() {
   }
 }
 
+// 年级改变时，动态生成多选 Week 复选框
 function onGradeChange() {
-  if (!weekSelect || !gradeSelect) return;
+  if (!gradeSelect || !weekCheckboxContainer) return;
   const selectedGrade = gradeSelect.value;
-  weekSelect.innerHTML = '<option value="">请选择 Week</option>';
+  weekCheckboxContainer.innerHTML = '';
 
   if (!selectedGrade || !gradeWeekMap[selectedGrade]) {
-    weekSelect.disabled = true;
+    weekCheckboxContainer.innerHTML = '<div class="empty-state" style="padding: 10px;">请先选择年级</div>';
     return;
   }
 
-  weekSelect.disabled = false;
   const weeks = gradeWeekMap[selectedGrade];
 
   weeks.forEach(w => {
-    const opt = document.createElement('option');
-    opt.value = w;
-    opt.textContent = `Week ${w}`;
-    weekSelect.appendChild(opt);
+    const chip = document.createElement('label');
+    chip.className = 'week-chip';
+    if (w === weeks[0]) chip.classList.add('selected'); // 默认选中第一个
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = w;
+    if (w === weeks[0]) checkbox.checked = true; // 默认勾选第一个
+
+    checkbox.addEventListener('change', () => {
+      if (checkbox.checked) chip.classList.add('selected');
+      else chip.classList.remove('selected');
+      loadWordsForSelectedWeeks(); // 每次勾选变化时动态加载
+    });
+
+    chip.appendChild(checkbox);
+    chip.appendChild(document.createTextNode(`Week ${w}`));
+    weekCheckboxContainer.appendChild(chip);
   });
 
-  if (weeks.length > 0) {
-    weekSelect.value = weeks[0];
-    isWrongWordsView = false;
-    currentWordIndex = 0;
-    loadWordsForCurrentSelection();
-  }
+  // 默认加载第一个 Week 的单词
+  loadWordsForSelectedWeeks();
+}
+
+// 获取当前勾选的所有 Week 数组
+function getSelectedWeeks() {
+  if (!weekCheckboxContainer) return [];
+  const checkboxes = weekCheckboxContainer.querySelectorAll('input[type="checkbox"]:checked');
+  return Array.from(checkboxes).map(cb => Number(cb.value));
 }
 
 // =============================================================
-// 2. 动态加载当前年级和 Week 的单词
+// 2. 根据选中的年级和【多个 Week】动态批量加载单词
 // =============================================================
-async function loadWordsForCurrentSelection() {
-  if (!gradeSelect || !weekSelect) return;
+async function loadWordsForSelectedWeeks() {
+  if (!gradeSelect) return;
   const grade = gradeSelect.value;
-  const week = weekSelect.value;
+  const selectedWeeks = getSelectedWeeks();
 
-  if (!grade || !week) return;
+  if (!grade || selectedWeeks.length === 0) {
+    if (wordsContainer) wordsContainer.innerHTML = '<div class="empty-state">请至少选择一个 Week</div>';
+    displayItems = [];
+    renderWords();
+    return;
+  }
 
   currentWordIndex = 0;
+  isWrongWordsView = false;
 
   try {
-    updateStatusMessage(`正在加载 ${grade}年级 Week ${week} 单词...`);
+    updateStatusMessage(`正在加载 ${grade}年级 选定 Week 单词...`);
 
+    // 使用 Supabase 的 .in() 过滤多个 week
     const { data, error } = await supabaseClient
       .from('words')
       .select('*')
       .eq('grade', grade)
-      .eq('week', week)
+      .in('week', selectedWeeks)
+      .order('week', { ascending: true })
       .order('id', { ascending: true });
 
     if (error) throw error;
@@ -148,11 +176,11 @@ async function loadWordsForCurrentSelection() {
     displayItems = data.map((row, idx) => ({
       id: row.id,
       grade: Number(grade),
-      week: Number(week),
+      week: Number(row.week),
       wordIndex: idx,
       word: row.word,
       sentence: row.sentence,
-      subtitle: `Week ${week} 练习`
+      subtitle: `Week ${row.week} 练习`
     }));
 
     checkboxStateMap.clear();
@@ -247,7 +275,7 @@ async function showWrongWordsList() {
 function renderWords() {
   if (!wordsContainer) return;
   if (displayItems.length === 0) {
-    wordsContainer.innerHTML = '<div class="empty-state">当前没有单词</div>';
+    wordsContainer.innerHTML = '<div class="empty-state">当前没有选择单词或没有数据</div>';
     return;
   }
 
@@ -275,8 +303,8 @@ function renderWords() {
     progress.textContent = `第 ${currentWordIndex + 1} / ${displayItems.length} 个`;
   } else {
     const grade = gradeSelect.value;
-    const week = weekSelect.value;
-    title.textContent = `${grade}年级 · Week ${week}`;
+    const selectedWeeks = getSelectedWeeks();
+    title.textContent = `${grade}年级 · Week [${selectedWeeks.join(', ')}]`;
     progress.textContent = `第 ${currentWordIndex + 1} / ${displayItems.length} 个`;
   }
 
@@ -313,7 +341,7 @@ function renderWords() {
   nextBtn.style.opacity = currentWordIndex === displayItems.length - 1 ? '0.5' : '1';
   nextBtn.addEventListener('click', async () => {
     if (currentWordIndex < displayItems.length - 1) {
-      await submitResultsToSupabase(); // 点击下一个时自动同步
+      await submitResultsToSupabase();
       currentWordIndex++;
       renderWords();
     }
@@ -352,6 +380,12 @@ function createWordCard(item, key) {
     const subSpan = document.createElement('span');
     subSpan.style.cssText = 'font-size: 0.75rem; color: #c62828; font-weight: 600;';
     subSpan.textContent = `来源: ${item.subtitle}`;
+    mainDiv.appendChild(subSpan);
+  } else {
+    // 多选模式下显示当前单词属于哪个 Week
+    const subSpan = document.createElement('span');
+    subSpan.style.cssText = 'font-size: 0.72rem; color: #6b7a8f; font-weight: 600;';
+    subSpan.textContent = `Week ${item.week}`;
     mainDiv.appendChild(subSpan);
   }
 
@@ -430,7 +464,7 @@ async function submitResultsToSupabase() {
 }
 
 // =============================================================
-// 6. 导出 Excel（下载所有测试过的单词）
+// 6. 导出 Excel
 // =============================================================
 async function downloadResults() {
   try {
@@ -509,11 +543,34 @@ async function downloadResults() {
 // =============================================================
 // 事件绑定
 // =============================================================
-if (gradeSelect) gradeSelect.addEventListener('change', onGradeChange);
-if (weekSelect) weekSelect.addEventListener('change', () => {
-  isWrongWordsView = false;
-  loadWordsForCurrentSelection();
+if (gradeSelect) gradeSelect.addEventListener('change', () => {
+  onGradeChange();
 });
+
+// 全选/清空 Week 快捷按钮
+if (selectAllWeeksBtn) {
+  selectAllWeeksBtn.addEventListener('click', () => {
+    if (!weekCheckboxContainer) return;
+    const checkboxes = weekCheckboxContainer.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach(cb => {
+      cb.checked = true;
+      cb.closest('.week-chip').classList.add('selected');
+    });
+    loadWordsForSelectedWeeks();
+  });
+}
+
+if (clearAllWeeksBtn) {
+  clearAllWeeksBtn.addEventListener('click', () => {
+    if (!weekCheckboxContainer) return;
+    const checkboxes = weekCheckboxContainer.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach(cb => {
+      cb.checked = false;
+      cb.closest('.week-chip').classList.remove('selected');
+    });
+    loadWordsForSelectedWeeks();
+  });
+}
 
 if (wrongWordsBtn) wrongWordsBtn.addEventListener('click', showWrongWordsList);
 if (downloadBtn) downloadBtn.addEventListener('click', downloadResults);
