@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Spelling Dictation · Grade 1 (Weeks 1–36)</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background: #f5f7fb;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 12px 10px 24px;
+        }
+        .app-container {
+            max-width: 600px;
+            margin: 0 auto;
+            width: 100%;
+            background: white;
+            border-radius: 28px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+            padding: 18px 14px 22px;
+            border: 1px solid #e9edf4;
+        }
+        h1 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: #1e2a3e;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .subhead {
+            color: #5e6f8d;
+            font-size: 0.85rem;
+            margin-bottom: 18px;
+            border-left: 3px solid #3b7cff;
+            padding-left: 10px;
+            font-weight: 450;
+        }
+        .filter-section {
+            background: #f9faff;
+            border-radius: 20px;
+            padding: 14px 12px;
+            margin-bottom: 18px;
+            border: 1px solid #e2e8f2;
+        }
+        .filter-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            color: #1e2a3e;
+            font-size: 0.95rem;
+            margin-bottom: 12px;
+            letter-spacing: -0.01em;
+        }
+        .filter-title span {
+            background: #d9e3ff;
+            border-radius: 30px;
+            padding: 2px 10px;
+            font-size: 0.75rem;
+            color: #1f4fcf;
+            font-weight: 600;
+        }
+        .grade-badge {
+            background: #e9eff9;
+            border-radius: 40px;
+            padding: 5px 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #1f4fcf;
+            display: inline-block;
+        }
+        .week-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            justify-content: flex-start;
+            max-height: 180px;
+            overflow-y: auto;
+            padding-bottom: 6px;
+            scrollbar-width: thin;
+            -webkit-overflow-scrolling: touch;
+        }
+        .week-btn {
+            background: white;
+            border: 1.5px solid #d0dae9;
+            color: #1e2a3e;
+            font-weight: 550;
+            padding: 6px 12px;
+            border-radius: 30px;
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            flex: 0 0 auto;
+            text-align: center;
+            min-width: 48px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .week-btn.active {
+            background: #1e2a3e;
+            border-color: #1e2a3e;
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 4px 10px rgba(30, 42, 62, 0.2);
+        }
+        .week-btn:active {
+            transform: scale(0.96);
+        }
+        .week-grid::-webkit-scrollbar {
+            width: 4px;
+        }
+        .week-grid::-webkit-scrollbar-thumb {
+            background: #c0ccdf;
+            border-radius: 20px;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            border: none;
+            background: #1e2a3e;
+            color: white;
+            font-weight: 600;
+            padding: 14px 14px;
+            border-radius: 60px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.15s ease;
+            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.06);
+            letter-spacing: -0.01em;
+            -webkit-tap-highlight-color: transparent;
+            min-width: 110px;
+        }
+        .btn.secondary {
+            background: white;
+            color: #1e2a3e;
+            border: 1.5px solid #cfdaea;
+            box-shadow: none;
+        }
+        .btn.download {
+            background: #1b8c5e;
+            color: white;
+        }
+        .btn.download:active {
+            background: #146c48;
+        }
+        .btn:active {
+            transform: scale(0.97);
+            background: #0f1a2b;
+        }
+        .btn.secondary:active {
+            background: #f0f4fc;
+        }
+        .word-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 6px;
+            margin-bottom: 16px;
+        }
+        .word-card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 12px 14px;
+            border: 1px solid #e3eaf5;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+            transition: all 0.1s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .word-card.is-right {
+            border-color: #b8e6cf;
+            background: #f6fdf9;
+        }
+        .word-card.is-wrong {
+            border-color: #f5c2c2;
+            background: #fff9f9;
+        }
+        .word-card-top {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .check-box {
+            appearance: none;
+            width: 32px;
+            height: 32px;
+            border: 2.5px solid #b6c5db;
+            border-radius: 9px;
+            margin: 0;
+            position: relative;
+            transition: all 0.12s ease;
+            background: white;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .check-box:checked {
+            background: #1b8c5e;
+            border-color: #1b8c5e;
+        }
+        .check-box:checked::after {
+            content: "";
+            position: absolute;
+            left: 8px;
+            top: 3px;
+            width: 8px;
+            height: 16px;
+            border: solid white;
+            border-width: 0 3.5px 3.5px 0;
+            transform: rotate(45deg);
+        }
+        .check-box:active {
+            transform: scale(0.94);
+        }
+        .word-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            min-width: 0;
+        }
+        .word-row {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .word-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: #0f1a2b;
+            line-height: 1.15;
+            word-break: break-word;
+        }
+        .word-meta {
+            font-size: 0.62rem;
+            background: #eef3fc;
+            color: #3760a8;
+            padding: 2px 8px;
+            border-radius: 40px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .word-sentence {
+            font-size: 0.9rem;
+            color: #5c6d8a;
+            line-height: 1.45;
+            font-weight: 450;
+            font-style: italic;
+        }
+        .word-sentence b {
+            color: #1b4bcf;
+            font-weight: 700;
+            font-style: normal;
+        }
+        /* Word source tag (grade/week where the word was learned) */
+        .source-tag {
+            font-size: 0.6rem;
+            background: #fef3c7;
+            color: #92400e;
+            padding: 1px 6px;
+            border-radius: 20px;
+            font-weight: 700;
+            white-space: nowrap;
+            font-style: normal;
+            vertical-align: middle;
+            margin-left: 2px;
+            border: 1px solid #fcd34d;
+        }
+        .source-tag.new {
+            background: #dbeafe;
+            color: #1e40af;
+            border-color: #93c5fd;
+        }
+        /* Sentence word checklist at bottom */
+        .sentence-checklist {
+            background: #f8faff;
+            border: 1px solid #e2e9f2;
+            border-radius: 12px;
+            padding: 10px 10px 8px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+        }
+        .checklist-label {
+            font-size: 0.68rem;
+            color: #6a7b99;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            width: 100%;
+            margin-bottom: 2px;
+        }
+        .word-chip {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: white;
+            border: 1.5px solid #d0dae9;
+            border-radius: 30px;
+            padding: 4px 10px 4px 6px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #3e4f6b;
+            cursor: pointer;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            transition: all 0.12s ease;
+        }
+        .word-chip:active {
+            transform: scale(0.96);
+        }
+        .word-chip.checked {
+            background: #e2f6ec;
+            border-color: #1b8c5e;
+            color: #116b47;
+        }
+        .word-chip input[type="checkbox"] {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border: 2px solid #b6c5db;
+            border-radius: 5px;
+            margin: 0;
+            position: relative;
+            transition: all 0.12s ease;
+            background: white;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .word-chip input[type="checkbox"]:checked {
+            background: #1b8c5e;
+            border-color: #1b8c5e;
+        }
+        .word-chip input[type="checkbox"]:checked::after {
+            content: "";
+            position: absolute;
+            left: 5px;
+            top: 1px;
+            width: 4px;
+            height: 9px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+        .word-chip.is-target {
+            background: #e0ecff;
+            border-color: #3b7cff;
+            color: #1b4bcf;
+        }
+        .word-chip.is-target.checked {
+            background: #d6f5e5;
+            border-color: #1b8c5e;
+            color: #116b47;
+        }
+        .result-summary {
+            background: #eef6ff;
+            border-radius: 18px;
+            padding: 14px 12px;
+            margin-bottom: 14px;
+            text-align: center;
+            font-weight: 500;
+            color: #1e2a3e;
+            border: 1px solid #d2e0ff;
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .result-summary.show {
+            display: flex;
+        }
+        .score-big {
+            font-size: 1.9rem;
+            font-weight: 800;
+            color: #1b4bcf;
+            line-height: 1.2;
+        }
+        .empty-message {
+            text-align: center;
+            padding: 36px 14px;
+            background: #f9fbfe;
+            border-radius: 24px;
+            color: #6a7b99;
+            font-weight: 500;
+            border: 1px dashed #cbd6e8;
+            margin-bottom: 12px;
+            font-size: 0.9rem;
+        }
+        .empty-message span {
+            font-size: 1.8rem;
+            display: block;
+            margin-bottom: 6px;
+            opacity: 0.6;
+        }
+        .legend {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            font-size: 0.72rem;
+            color: #5e6f8d;
+            font-weight: 500;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            text-align: center;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .legend-box {
+            width: 13px;
+            height: 13px;
+            border-radius: 4px;
+            border: 2px solid #b6c5db;
+            background: white;
+        }
+        .legend-box.checked {
+            background: #1b8c5e;
+            border-color: #1b8c5e;
+            position: relative;
+        }
+        .legend-box.checked::after {
+            content: "";
+            position: absolute;
+            left: 3px;
+            top: 0px;
+            width: 4px;
+            height: 7px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+        .footer-note {
+            font-size: 0.72rem;
+            color: #8a99b4;
+            text-align: center;
+            margin-top: 12px;
+            padding-top: 8px;
+            border-top: 1px solid #ecf0f7;
+        }
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #1e2a3e;
+            color: white;
+            padding: 14px 24px;
+            border-radius: 60px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.2);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 999;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <h1>📖 Spelling</h1>
+    <div class="subhead">Grade 1 · Tap each word in the sentence you spelled correctly</div>
+
+    <!-- Grade display -->
+    <div class="filter-section">
+        <div class="filter-title">📚 Grade</div>
+        <div class="grade-badge">Grade 1 (Master Spelling List)</div>
+    </div>
+
+    <!-- Week selector -->
+    <div class="filter-section">
+        <div class="filter-title">📅 Week <span>1–36, multi-select</span></div>
+        <div class="week-grid" id="weekGrid"></div>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="action-buttons">
+        <button class="btn" id="loadBtn" aria-label="Show words">🔍 Show</button>
+        <button class="btn secondary" id="resetBtn" aria-label="Reset selections">↻ Reset</button>
+    </div>
+    <div class="action-buttons">
+        <button class="btn download" id="downloadBtn" aria-label="Download results">⬇ Download CSV</button>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+        <div class="legend-item">
+            <div class="legend-box checked"></div>
+            <span>Checked = Right</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-box"></div>
+            <span>Unchecked = Wrong</span>
+        </div>
+        <div class="legend-item">
+            <span class="source-tag">W1</span>
+            <span>= learned in that week</span>
+        </div>
+    </div>
+
+    <!-- Result summary -->
+    <div class="result-summary" id="resultSummary">
+        <div class="score-big" id="scoreDisplay">0 / 0</div>
+        <div id="scoreDetail">Words marked</div>
+    </div>
+
+    <!-- Word list container -->
+    <div id="wordListContainer" class="word-list">
+        <div class="empty-message">
+            <span>📝</span>
+            Select weeks & tap “Show”
+        </div>
+    </div>
+
+    <div class="footer-note">
+        ✅ Check the word box + each sentence word you spelled right
+    </div>
+</div>
+
+<!-- Toast notification -->
+<div class="toast" id="toast">Downloaded!</div>
+
+<script>
+    (function() {
+        // ---------- WORD DATA WITH SENTENCES ----------
+        // Each entry: [word, sentence]
+        const grade1Data = {
+            1: [
+                ["the", "The cat sat on the mat."],
+                ["of", "A cup of milk is good."],
+                ["and", "A cat and a dog play."],
+                ["that", "That hat is big."],
+                ["cat", "The cat is on the mat."],
+                ["mat", "A cat sat on the mat."],
+                ["sat", "The dog sat on the rug."],
+                ["hat", "I have a red hat."]
+            ],
+            2: [
+                ["to", "I go to the park."],
+                ["in", "The cat is in the box."],
+                ["is", "The sun is hot."],
+                ["you", "You can run fast."],
+                ["man", "The man has a hat."],
+                ["can", "I can see the cat."],
+                ["ran", "The dog ran to me."],
+                ["pan", "The pan is on the stove."]
+            ],
+            3: [
+                ["than", "A cat is big, than a rat."],
+                ["it", "It is a red hat."],
+                ["he", "He can run and play."],
+                ["was", "The dog was in the box."],
+                ["map", "Look at the map."],
+                ["cap", "I have a blue cap."],
+                ["nap", "The cat had a nap."],
+                ["tap", "Tap the door with your hand."]
+            ],
+            4: [
+                ["for", "This gift is for you."],
+                ["on", "The cat is on the mat."],
+                ["are", "We are in the car."],
+                ["as", "The dog is as big as me."],
+                ["back", "I go back to my house."],
+                ["sack", "The sack is full of rice."],
+                ["black", "The cat is black."],
+                ["snack", "I have a snack at school."]
+            ],
+            5: [
+                ["with", "I play with my dog."],
+                ["his", "He has his hat on."],
+                ["they", "They are in the car."],
+                ["pit", "The dog dug a pit."],
+                ["sit", "Please sit on the mat."],
+                ["hit", "Do not hit the ball hard."],
+                ["bit", "The dog bit the bone."],
+                ["fit", "The shoe is a good fit."]
+            ],
+            6: [
+                ["at", "Look at the cat."],
+                ["be", "I want to be a star."],
+                ["this", "This is my new hat."],
+                ["have", "I have a red ball."],
+                ["big", "The dog is big."],
+                ["pig", "The pig is in the mud."],
+                ["dig", "The dog can dig a hole."],
+                ["wig", "She has a new wig."]
+            ],
+            7: [
+                ["from", "I am from this town."],
+                ["or", "Do you want a cat or a dog?"],
+                ["one", "I have one red hat."],
+                ["had", "She had a big hat."],
+                ["pin", "The pin is on the map."],
+                ["thin", "The cat is thin."],
+                ["spin", "I can spin the top."],
+                ["skin", "The sun can burn your skin."]
+            ],
+            8: [
+                ["by", "I sit by the window."],
+                ["words", "I can read three words."],
+                ["but", "I like cats, but not dogs."],
+                ["not", "Do not run in the house."],
+                ["sick", "The cat is sick."],
+                ["kick", "Do not kick the ball."],
+                ["brick", "The house is made of brick."],
+                ["stick", "The dog has a stick."]
+            ],
+            9: [
+                ["what", "What is in the box?"],
+                ["all", "We all had fun."],
+                ["were", "They were at the park."],
+                ["we", "We can go to the park."],
+                ["hot", "The sun is hot."],
+                ["pot", "The pot is on the stove."],
+                ["not", "The cat is not big."],
+                ["lot", "A lot of cats are here."]
+            ],
+            10: [
+                ["when", "When can we play?"],
+                ["your", "This is your hat."],
+                ["pop", "The top can pop up."],
+                ["said", "She said hello to me."],
+                ["mop", "I can mop the floor."],
+                ["top", "The top of the hill is high."],
+                ["hop", "The frog can hop."],
+                ["drop", "Do not drop the cup."]
+            ],
+            11: [
+                ["there", "The cat is over there."],
+                ["use", "Use your hat in the sun."],
+                ["an", "I have an old map."],
+                ["each", "Each cat has a hat."],
+                ["job", "My job is to feed the cat."],
+                ["mob", "A mob of people came."],
+                ["cob", "The corn is on the cob."],
+                ["rob", "Do not rob the bank."]
+            ],
+            12: [
+                ["which", "Which hat is your?"],
+                ["she", "She has a red hat."],
+                ["do", "Do you like to run?"],
+                ["how", "How do you make a cake?"],
+                ["sock", "I have a red sock."],
+                ["rock", "The rock is on the hill."],
+                ["block", "I can block the ball."],
+                ["clock", "The clock is on the wall."]
+            ],
+            13: [
+                ["their", "Their cat is in the yard."],
+                ["if", "If you run, you can win."],
+                ["will", "I will go to the park."],
+                ["up", "The cat can go up the tree."],
+                ["cut", "Do not cut your hand."],
+                ["nut", "The nut is on the tree."],
+                ["hut", "The man lives in a hut."],
+                ["shut", "Please shut the door."]
+            ],
+            14: [
+                ["other", "The other cat is black."],
+                ["about", "I read about a big cat."],
+                ["out", "The cat is out of the box."],
+                ["many", "Many cats are in the yard."],
+                ["bug", "A bug is on the leaf."],
+                ["hug", "I want a hug from my mom."],
+                ["rug", "The rug is on the floor."],
+                ["mug", "The mug is full of milk."]
+            ],
+            15: [
+                ["then", "I ran, then I sat down."],
+                ["them", "I gave them a red ball."],
+                ["these", "These are my new shoes."],
+                ["so", "It is hot, so I have water."],
+                ["sun", "The sun is up in the sky."],
+                ["run", "I can run very fast."],
+                ["fun", "We have fun at the park."],
+                ["bun", "I had a bun for lunch."]
+            ],
+            16: [
+                ["some", "I have some red apples."],
+                ["her", "Her hat is on the chair."],
+                ["would", "I would like a cup of milk."],
+                ["make", "I can make a cake."],
+                ["duck", "The duck is in the pond."],
+                ["luck", "Good luck on your test!"],
+                ["suck", "Do not suck your thumb."],
+                ["stuck", "The cat is stuck in the tree."]
+            ],
+            17: [
+                ["like", "I like to play with my dog."],
+                ["him", "I gave him a red ball."],
+                ["into", "The cat ran into the house."],
+                ["time", "It is time to go to bed."],
+                ["pet", "My pet is a big dog."],
+                ["get", "I get a hat from the store."],
+                ["wet", "The dog is wet from the rain."],
+                ["let", "Let me help you with that."]
+            ],
+            18: [
+                ["has", "She has a new red hat."],
+                ["look", "Look at the big cat!"],
+                ["two", "I have two red balls."],
+                ["more", "I want more milk, please."],
+                ["red", "The red hat is on the mat."],
+                ["bed", "I go to bed at night."],
+                ["fed", "I fed the cat this morning."],
+                ["sled", "We can go down the hill on a sled."]
+            ],
+            19: [
+                ["write", "I can write my name."],
+                ["go", "Let us go to the park."],
+                ["see", "I can see the sun."],
+                ["number", "What number is on the door?"],
+                ["men", "Two men are in the car."],
+                ["hen", "The hen has a red egg."],
+                ["pen", "I have a blue pen."],
+                ["ten", "I can count to ten."]
+            ],
+            20: [
+                ["no", "No, I do not want to go."],
+                ["bell", "The bell on the door is loud."],
+                ["could", "I could run to the park."],
+                ["people", "Many people are at the park."],
+                ["tell", "Tell me about your day."],
+                ["fell", "The cat fell off the bed."],
+                ["sell", "They sell hats at the store."],
+                ["well", "She can run very well."]
+            ],
+            21: [
+                ["my", "My cat is on the mat."],
+                ["ant", "The ant is on the leaf."],
+                ["first", "I am first in line."],
+                ["water", "I drink water when I am hot."],
+                ["bad", "The dog is not bad."],
+                ["bat", "The bat can fly at night."],
+                ["glad", "I am glad to see you."],
+                ["mad", "The cat is mad at the dog."]
+            ],
+            22: [
+                ["been", "I have been to the park."],
+                ["called", "She called my name."],
+                ["who", "Who is at the door?"],
+                ["oil", "We use oil to cook."],
+                ["win", "I want to win the race."],
+                ["lip", "The cup is on my lip."],
+                ["kid", "The kid can run fast."],
+                ["ship", "The ship is on the sea."]
+            ],
+            23: [
+                ["dog", "The dog can run and play."],
+                ["now", "We can go to the park now."],
+                ["find", "Can you find my hat?"],
+                ["long", "The dog has a long tail."],
+                ["mom", "My mom can make a cake."],
+                ["fox", "The fox is in the woods."],
+                ["chop", "I can chop the wood."],
+                ["shop", "We go to the shop for milk."]
+            ],
+            24: [
+                ["down", "The cat ran down the tree."],
+                ["day", "It is a hot day."],
+                ["did", "I did my work."],
+                ["set", "I set the cup on the mat."],
+                ["bus", "The bus is at the stop."],
+                ["truck", "The truck is big and red."],
+                ["must", "I must go to bed now."],
+                ["cup", "The cup is full of milk."]
+            ],
+            25: [
+                ["come", "Come and see my new hat."],
+                ["made", "I made a cake for you."],
+                ["may", "May I have a cup of milk?"],
+                ["part", "This is part of the map."],
+                ["web", "A web is on the tree."],
+                ["legs", "The dog has four legs."],
+                ["less", "I want less milk, please."],
+                ["shell", "The shell is on the sand."]
+            ],
+            26: [
+                ["game", "We can play a fun game."],
+                ["page", "Read the next page."],
+                ["race", "I can run in the race."],
+                ["tape", "I use tape to fix the page."],
+                ["name", "My name is on the page."],
+                ["shake", "Shake the cup of milk."],
+                ["tame", "The dog is tame and kind."],
+                ["animal", "A cat is a small animal."]
+            ],
+            27: [
+                ["way", "This is the way to the park."],
+                ["pay", "I pay for the milk."],
+                ["stay", "Stay here with me."],
+                ["clay", "I can make a cup from clay."],
+                ["play", "I play with my dog."],
+                ["tray", "The cup is on the tray."],
+                ["roots", "The tree has deep roots."],
+                ["tree", "The cat is in the tree."]
+            ],
+            28: [
+                ["nice", "She is a nice person."],
+                ["drive", "I can drive a car."],
+                ["mine", "That red hat is mine."],
+                ["wise", "The old man is wise."],
+                ["dime", "I have a dime in my hand."],
+                ["five", "I can count to five."],
+                ["lime", "The lime is green."],
+                ["nest", "The bird is in its nest."]
+            ],
+            29: [
+                ["dry", "The sun will dry my hat."],
+                ["cry", "Do not cry, it is okay."],
+                ["sky", "The sky is blue and big."],
+                ["shy", "The cat is shy with new people."],
+                ["spy", "I can spy a red bird."],
+                ["try", "I will try to run fast."],
+                ["light", "The light is on in the room."],
+                ["soil", "The plant is in the soil."]
+            ],
+            30: [
+                ["nose", "The dog has a wet nose."],
+                ["bone", "The dog has a big bone."],
+                ["code", "I can read the code."],
+                ["spoke", "She spoke to me at the park."],
+                ["hole", "The dog dug a hole."],
+                ["note", "I can write a note."],
+                ["weather", "The weather is hot today."],
+                ["rose", "The rose is red and nice."]
+            ],
+            31: [
+                ["low", "The cat can go low to the ground."],
+                ["snow", "The snow is white and cold."],
+                ["grow", "The plant can grow in the sun."],
+                ["flow", "The water can flow down the hill."],
+                ["show", "Show me your new hat."],
+                ["blow", "The wind can blow my hat."],
+                ["above", "The sky is above us."],
+                ["below", "The cat is below the table."]
+            ],
+            32: [
+                ["coat", "I have a warm coat for the snow."],
+                ["boat", "The boat is on the water."],
+                ["float", "The boat can float on the sea."],
+                ["soak", "Do not soak your hat in water."],
+                ["load", "I can load the box in the car."],
+                ["soap", "Use soap to wash your hands."],
+                ["stop", "The car must stop at the light."],
+                ["trip", "We go on a trip to the sea."]
+            ],
+            33: [
+                ["hook", "The fish is on the hook."],
+                ["took", "She took my hat by mistake."],
+                ["good", "You did a good job!"],
+                ["stood", "The dog stood by the door."],
+                ["wood", "The table is made of wood."],
+                ["foot", "My foot is in the shoe."],
+                ["gas", "The car needs gas to go."],
+                ["heat", "The heat from the sun is strong."]
+            ],
+            34: [
+                ["cow", "The cow is in the field."],
+                ["plow", "The man will plow the soil."],
+                ["brown", "The dog is brown and white."],
+                ["town", "We live in a small town."],
+                ["clown", "The clown made us all laugh."],
+                ["tower", "The clock tower is very tall."],
+                ["sure", "I am sure I can do it."],
+                ["vote", "We vote for our leader."]
+            ],
+            35: [
+                ["moon", "The moon is up in the sky."],
+                ["spoon", "I eat my food with a spoon."],
+                ["tooth", "I have a loose tooth."],
+                ["broom", "I use a broom to clean the floor."],
+                ["roof", "The cat is on the roof."],
+                ["pool", "We swim in the pool."],
+                ["huge", "The tree is huge and old."],
+                ["ice", "The ice is cold and hard."]
+            ],
+            36: [
+                ["deep", "The pool is deep and cold."],
+                ["feel", "I feel happy today."],
+                ["green", "The leaf is green."],
+                ["seed", "The seed will grow into a plant."],
+                ["need", "I need a cup of water."],
+                ["free", "The bird is free to fly."],
+                ["grass", "The dog runs in the grass."],
+                ["summer", "Summer is a hot time of year."]
+            ]
+        };
+
+        // ---------- BUILD WORD SOURCE MAP ----------
+        // Maps each word (lowercase) to the earliest week it appears as a target word
+        const wordSourceMap = {};
+        const availableWeeks = Object.keys(grade1Data).map(Number).sort((a, b) => a - b);
+        for (const w of availableWeeks) {
+            for (const [word] of grade1Data[w]) {
+                const key = word.toLowerCase();
+                if (wordSourceMap[key] === undefined) {
+                    wordSourceMap[key] = w;  // first occurrence
+                }
+            }
+        }
+
+        // Common stop/simple words (always treated as known — no tag)
+        const commonWords = new Set([
+            "a", "an", "i", "you", "he", "she", "it", "we", "they",
+            "my", "your", "his", "her", "its", "our", "their",
+            "am", "is", "are", "was", "were", "be", "been",
+            "do", "does", "did", "have", "has", "had",
+            "will", "would", "can", "could", "may", "might", "must",
+            "this", "that", "these", "those", "the", "and", "or", "but", "so",
+            "of", "to", "in", "on", "at", "by", "for", "with", "from",
+            "up", "down", "out", "off", "over", "under", "again", "then",
+            "here", "there", "when", "where", "why", "how", "what", "which", "who",
+            "not", "no", "yes", "all", "some", "many", "more", "most",
+            "one", "two", "three", "first", "next", "last", "good", "new", "old",
+            "big", "small", "hot", "cold", "red", "blue", "green", "black", "white", "brown",
+            "very", "too", "just", "only", "also", "well", "now", "please"
+        ]);
+
+        // ---------- STATE ----------
+        let selectedWeeks = new Set();
+        let currentWords = [];   // { id, text, week, sentence, checked, sentenceChecks: {wordIndex: bool} }
+        let touchedIndexes = new Set();
+
+        // DOM elements
+        const weekGrid = document.getElementById('weekGrid');
+        const loadBtn = document.getElementById('loadBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const wordListContainer = document.getElementById('wordListContainer');
+        const resultSummary = document.getElementById('resultSummary');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const scoreDetail = document.getElementById('scoreDetail');
+        const toast = document.getElementById('toast');
+
+        // ---------- TOAST ----------
+        function showToast(message) {
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2500);
+        }
+
+        // ---------- RENDER WEEK BUTTONS ----------
+        function renderWeekButtons() {
+            weekGrid.innerHTML = '';
+            for (const w of availableWeeks) {
+                const btn = document.createElement('button');
+                btn.classList.add('week-btn');
+                btn.textContent = `W${w}`;
+                btn.dataset.week = w;
+                if (selectedWeeks.has(w)) btn.classList.add('active');
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const week = parseInt(btn.dataset.week);
+                    if (selectedWeeks.has(week)) {
+                        selectedWeeks.delete(week);
+                        btn.classList.remove('active');
+                    } else {
+                        selectedWeeks.add(week);
+                        btn.classList.add('active');
+                    }
+                });
+                weekGrid.appendChild(btn);
+            }
+        }
+
+        // ---------- BUILD WORD LIST ----------
+        function buildWordList() {
+            if (selectedWeeks.size === 0) {
+                currentWords = [];
+                touchedIndexes.clear();
+                renderWordList();
+                resultSummary.classList.remove('show');
+                return;
+            }
+
+            const newWords = [];
+            const weeks = Array.from(selectedWeeks).sort((a, b) => a - b);
+
+            for (const week of weeks) {
+                const weekData = grade1Data[week];
+                if (!weekData) continue;
+                for (const [word, sentence] of weekData) {
+                    const id = `g1-w${week}-${word}-${Math.random().toString(36).substring(2, 8)}`;
+                    newWords.push({
+                        id: id,
+                        text: word,
+                        week: week,
+                        sentence: sentence,
+                        checked: false,
+                        sentenceChecks: {}  // index -> bool
+                    });
+                }
+            }
+
+            currentWords = newWords;
+            touchedIndexes.clear();
+            renderWordList();
+            resultSummary.classList.remove('show');
+            updateScoreSummary();
+        }
+
+        // ---------- SPLIT SENTENCE INTO WORD TOKENS ----------
+        // Returns array of { token, isWord, clean }
+        // Keeps punctuation attached to display but strips for lookup
+        function tokenizeSentence(sentence) {
+            const rawTokens = sentence.split(/(\s+)/); // keep spaces as tokens
+            const result = [];
+            for (const tok of rawTokens) {
+                if (tok === '') continue;
+                if (/^\s+$/.test(tok)) {
+                    result.push({ token: tok, isWord: false, clean: '' });
+                } else {
+                    // strip leading/trailing punctuation for lookup
+                    const clean = tok.replace(/^[^a-zA-Z0-9']+|[^a-zA-Z0-9']+$/g, '');
+                    result.push({ token: tok, isWord: clean.length > 0, clean: clean });
+                }
+            }
+            return result;
+        }
+
+        // ---------- RENDER WORD LIST ----------
+        function renderWordList() {
+            if (currentWords.length === 0) {
+                wordListContainer.innerHTML = `
+                    <div class="empty-message">
+                        <span>📭</span>
+                        No words selected. Choose weeks and tap “Show”.
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            currentWords.forEach((wordItem, index) => {
+                const isChecked = wordItem.checked;
+                const isTouched = touchedIndexes.has(index);
+                let cardClass = 'word-card';
+                if (isTouched) {
+                    cardClass += isChecked ? ' is-right' : ' is-wrong';
+                }
+
+                // Build sentence with inline source tags
+                const sentenceHtml = buildSentenceHtml(wordItem.sentence, wordItem.text);
+
+                // Build checklist of unique words in the sentence (excluding common)
+                const checklistHtml = buildSentenceChecklist(wordItem, index);
+
+                html += `
+                    <div class="${cardClass}">
+                        <div class="word-card-top">
+                            <input type="checkbox" class="check-box" ${isChecked ? 'checked' : ''} data-index="${index}" aria-label="Mark ${escapeHtml(wordItem.text)} as correct">
+                            <div class="word-body">
+                                <div class="word-row">
+                                    <div class="word-text">${escapeHtml(wordItem.text)}</div>
+                                    <div class="word-meta">W${wordItem.week}</div>
+                                </div>
+                                <div class="word-sentence">${sentenceHtml}</div>
+                            </div>
+                        </div>
+                        ${checklistHtml}
+                    </div>
+                `;
+            });
+
+            wordListContainer.innerHTML = html;
+
+            // Attach checkbox listeners for the main word checkbox
+            document.querySelectorAll('.check-box').forEach(cb => {
+                cb.addEventListener('change', (e) => {
+                    const index = parseInt(e.target.dataset.index);
+                    if (!isNaN(index) && currentWords[index]) {
+                        currentWords[index].checked = e.target.checked;
+                        touchedIndexes.add(index);
+                        renderWordList();
+                        updateScoreSummary();
+                    }
+                });
+            });
+
+            // Attach listeners to sentence word chips
+            document.querySelectorAll('.word-chip input[type="checkbox"]').forEach(cb => {
+                cb.addEventListener('change', (e) => {
+                    const cardIndex = parseInt(e.target.dataset.cardIndex);
+                    const wordKey = e.target.dataset.wordKey;
+                    if (!isNaN(cardIndex) && currentWords[cardIndex]) {
+                        currentWords[cardIndex].sentenceChecks[wordKey] = e.target.checked;
+                        // Toggle chip class
+                        const chip = e.target.closest('.word-chip');
+                        if (chip) {
+                            chip.classList.toggle('checked', e.target.checked);
+                        }
+                    }
+                });
+            });
+        }
+
+        // ---------- BUILD SENTENCE HTML WITH SOURCE TAGS ----------
+        function buildSentenceHtml(sentence, targetWord) {
+            const tokens = tokenizeSentence(sentence);
+            let html = '';
+            const targetLower = targetWord.toLowerCase();
+
+            for (const t of tokens) {
+                if (!t.isWord) {
+                    html += escapeHtml(t.token);
+                } else {
+                    const lower = t.clean.toLowerCase();
+                    const isTarget = lower === targetLower;
+
+                    if (isTarget) {
+                        html += `<b>${escapeHtml(t.token)}</b>`;
+                    } else {
+                        html += escapeHtml(t.token);
+                    }
+
+                    // Add source tag if the word is a learned spelling word (not common, not target)
+                    if (!isTarget && !commonWords.has(lower) && wordSourceMap[lower] !== undefined) {
+                        const srcWeek = wordSourceMap[lower];
+                        html += `<span class="source-tag">W${srcWeek}</span>`;
+                    }
+                }
+            }
+            return html;
+        }
+
+        // ---------- BUILD SENTENCE CHECKLIST ----------
+        // Shows unique words from the sentence (excluding common words).
+        // Each word gets its own checkbox.
+        function buildSentenceChecklist(wordItem, cardIndex) {
+            const tokens = tokenizeSentence(wordItem.sentence);
+            // Collect unique spelling words in this sentence (target + other learned words)
+            const uniqueWords = [];
+            const seen = new Set();
+            const targetLower = wordItem.text.toLowerCase();
+
+            for (const t of tokens) {
+                if (!t.isWord) continue;
+                const lower = t.clean.toLowerCase();
+                if (seen.has(lower)) continue;
+                if (commonWords.has(lower)) continue;   // skip common words
+                seen.add(lower);
+                uniqueWords.push({
+                    display: t.clean,
+                    lower: lower,
+                    isTarget: lower === targetLower
+                });
+            }
+
+            if (uniqueWords.length === 0) return '';
+
+            let chipsHtml = '';
+            for (const uw of uniqueWords) {
+                const checked = wordItem.sentenceChecks[uw.lower] ? 'checked' : '';
+                const chipClass = 'word-chip' + (uw.isTarget ? ' is-target' : '') + (checked ? ' checked' : '');
+                const tagText = uw.isTarget ? '' : '';
+                chipsHtml += `
+                    <label class="${chipClass}">
+                        <input type="checkbox" ${checked} data-card-index="${cardIndex}" data-word-key="${escapeHtml(uw.lower)}">
+                        <span>${escapeHtml(uw.display)}</span>
+                        ${tagText}
+                    </label>
+                `;
+            }
+
+            return `
+                <div class="sentence-checklist">
+                    <div class="checklist-label">✅ Words spelled right in this sentence</div>
+                    ${chipsHtml}
+                </div>
+            `;
+        }
+
+        // Helper to escape HTML
+        function escapeHtml(unsafe) {
+            return String(unsafe).replace(/[&<>"]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                if (m === '"') return '&quot;';
+                return m;
+            });
+        }
+
+        // ---------- UPDATE SCORE SUMMARY ----------
+        function updateScoreSummary() {
+            if (currentWords.length === 0) {
+                resultSummary.classList.remove('show');
+                return;
+            }
+            const total = currentWords.length;
+            const marked = touchedIndexes.size;
+            const rightCount = currentWords.filter((w, i) => touchedIndexes.has(i) && w.checked).length;
+            const wrongCount = marked - rightCount;
+
+            if (marked === 0) {
+                resultSummary.classList.remove('show');
+                return;
+            }
+
+            resultSummary.classList.add('show');
+            scoreDisplay.textContent = `${rightCount} / ${total}`;
+            scoreDetail.textContent = `${marked} of ${total} marked · ✅ ${rightCount} · ❌ ${wrongCount}`;
+        }
+
+        // ---------- RESET ALL ----------
+        function resetAll() {
+            selectedWeeks.clear();
+            currentWords = [];
+            touchedIndexes.clear();
+            document.querySelectorAll('.week-btn').forEach(btn => btn.classList.remove('active'));
+            renderWordList();
+            resultSummary.classList.remove('show');
+        }
+
+        // ---------- DOWNLOAD RESULTS AS CSV ----------
+        function downloadResults() {
+            if (currentWords.length === 0) {
+                showToast('No words to download. Load words first.');
+                return;
+            }
+
+            if (touchedIndexes.size === 0) {
+                showToast('No words marked yet.');
+                return;
+            }
+
+            const rows = [];
+            rows.push(['#', 'Word', 'Week', 'Sentence', 'Result', 'Sentence Words Marked Right'].join(','));
+
+            currentWords.forEach((wordItem, index) => {
+                const num = index + 1;
+                const word = csvEscape(wordItem.text);
+                const week = wordItem.week;
+                const sentence = csvEscape(wordItem.sentence);
+                let result;
+                if (!touchedIndexes.has(index)) {
+                    result = 'Not marked';
+                } else if (wordItem.checked) {
+                    result = 'Right';
+                } else {
+                    result = 'Wrong';
+                }
+                // Sentence words that are checked
+                const checkedWords = Object.keys(wordItem.sentenceChecks)
+                    .filter(k => wordItem.sentenceChecks[k])
+                    .join(' ');
+                const checkedStr = csvEscape(checkedWords);
+                rows.push([num, word, week, sentence, result, checkedStr].join(','));
+            });
+
+            const total = currentWords.length;
+            const marked = touchedIndexes.size;
+            const rightCount = currentWords.filter((w, i) => touchedIndexes.has(i) && w.checked).length;
+            const wrongCount = marked - rightCount;
+
+            rows.push('');
+            rows.push(['Summary'].join(','));
+            rows.push(['Total words', total].join(','));
+            rows.push(['Marked', marked].join(','));
+            rows.push(['Right', rightCount].join(','));
+            rows.push(['Wrong', wrongCount].join(','));
+            rows.push(['Score', `${rightCount}/${total}`].join(','));
+
+            const csvContent = rows.join('\n');
+            const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+
+            const weeks = Array.from(selectedWeeks).sort((a, b) => a - b);
+            const weekStr = weeks.length <= 5
+                ? weeks.map(w => `W${w}`).join('-')
+                : `W${weeks[0]}-to-W${weeks[weeks.length-1]}`;
+            const dateStr = new Date().toISOString().slice(0, 10);
+            const filename = `spelling-grade1-${weekStr}-${dateStr}.csv`;
+
+            if (navigator.msSaveBlob) {
+                navigator.msSaveBlob(blob, filename);
+            } else {
+                const link = document.createElement('a');
+                if (link.download !== undefined) {
+                    const url = URL.createObjectURL(blob);
+                    link.setAttribute('href', url);
+                    link.setAttribute('download', filename);
+                    link.style.visibility = 'hidden';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                }
+            }
+
+            showToast(`⬇ Downloaded ${marked} marked words!`);
+        }
+
+        function csvEscape(value) {
+            const str = String(value);
+            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                return '"' + str.replace(/"/g, '""') + '"';
+            }
+            return str;
+        }
+
+        // ---------- INITIAL LOAD ----------
+        function initApp() {
+            selectedWeeks.add(1);
+            selectedWeeks.add(2);
+            selectedWeeks.add(5);
+
+            renderWeekButtons();
+            buildWordList();
+
+            loadBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                buildWordList();
+            });
+
+            resetBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                resetAll();
+            });
+
+            downloadBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                downloadResults();
+            });
+        }
+
+        initApp();
+    })();
+</script>
+</body>
+</html>
