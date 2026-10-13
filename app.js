@@ -1,5 +1,5 @@
 // =============================================================
-// 听写应用逻辑 (无30s自动提交 + 按钮位于翻页后)
+// 听写应用逻辑 (Dropdown 多选 Week 下拉面板 + 单字分页)
 // =============================================================
 
 const SUPABASE_URL = 'https://whqpuzxfheqwaniuqbbz.supabase.co';
@@ -20,6 +20,9 @@ let wordSourceIndex = new Map();
 
 // ---------- DOM 元素安全获取 ----------
 const gradeSelect = document.getElementById('gradeSelect');
+const weekDropdownHeader = document.getElementById('weekDropdownHeader');
+const weekDropdownText = document.getElementById('weekDropdownText');
+const weekDropdownBody = document.getElementById('weekDropdownBody');
 const weekCheckboxContainer = document.getElementById('weekCheckboxContainer');
 const selectAllWeeksBtn = document.getElementById('selectAllWeeks');
 const clearAllWeeksBtn = document.getElementById('clearAllWeeks');
@@ -30,6 +33,22 @@ const submitBtn = document.getElementById('submitBtn');
 const clearAllBtn = document.getElementById('clearAllBtn');
 const wrongWordsBtn = document.getElementById('wrongWordsBtn');
 const statusMsg = document.getElementById('statusMsg');
+
+// 下拉菜单展开/折叠交互
+if (weekDropdownHeader) {
+  weekDropdownHeader.addEventListener('click', (e) => {
+    e.stopPropagation();
+    weekDropdownHeader.parentElement.classList.toggle('open');
+  });
+}
+
+// 点击页面其他地方关闭下拉菜单
+document.addEventListener('click', (e) => {
+  const container = document.querySelector('.dropdown-select-container');
+  if (container && !container.contains(e.target)) {
+    container.classList.remove('open');
+  }
+});
 
 // =============================================================
 // 1. 初始化菜单
@@ -107,6 +126,7 @@ function onGradeChange() {
 
   if (!selectedGrade || !gradeWeekMap[selectedGrade]) {
     weekCheckboxContainer.innerHTML = '<div class="empty-state" style="padding: 10px;">该年级暂无 Week 数据</div>';
+    if (weekDropdownText) weekDropdownText.textContent = '请选择 Week';
     return;
   }
 
@@ -125,6 +145,7 @@ function onGradeChange() {
     checkbox.addEventListener('change', () => {
       if (checkbox.checked) chip.classList.add('selected');
       else chip.classList.remove('selected');
+      updateDropdownHeaderText();
       loadWordsForSelectedWeeks();
     });
 
@@ -136,7 +157,7 @@ function onGradeChange() {
     weekCheckboxContainer.appendChild(chip);
   });
 
-  weekCheckboxContainer.style.display = 'flex';
+  updateDropdownHeaderText();
   loadWordsForSelectedWeeks();
 }
 
@@ -144,6 +165,17 @@ function getSelectedWeeks() {
   if (!weekCheckboxContainer) return [];
   const checkboxes = weekCheckboxContainer.querySelectorAll('input[type="checkbox"]:checked');
   return Array.from(checkboxes).map(cb => Number(cb.value));
+}
+
+// 更新下拉框头部显示的已选状态文字
+function updateDropdownHeaderText() {
+  const selectedWeeks = getSelectedWeeks();
+  if (!weekDropdownText) return;
+  if (selectedWeeks.length === 0) {
+    weekDropdownText.textContent = '请选择 Week';
+  } else {
+    weekDropdownText.textContent = `已选择 Week [${selectedWeeks.join(', ')}]`;
+  }
 }
 
 // =============================================================
@@ -431,6 +463,39 @@ function renderWords() {
   navContainer.appendChild(nextBtn);
   groupEl.appendChild(navContainer);
 
+  // 附加操作按钮紧跟在翻页后面
+  const actionBtns = document.createElement('div');
+  actionBtns.className = 'action-buttons';
+  actionBtns.innerHTML = `
+    <button class="btn btn-primary" id="downloadBtn">📥 导出 Excel</button>
+    <button class="btn btn-success" id="submitBtn">🚀 提交进度</button>
+    <button class="btn" id="clearAllBtn">🧹 清空勾选</button>
+  `;
+  groupEl.appendChild(actionBtns);
+
+  // 重新绑定这组动态生成的按钮事件
+  actionBtns.querySelector('#downloadBtn').addEventListener('click', downloadResults);
+  actionBtns.querySelector('#submitBtn').addEventListener('click', async () => {
+    await submitResultsToSupabase();
+    updateStatusMessage('✅ 进度已成功提交至 Supabase 数据库！');
+    setTimeout(() => updateStatusMessage(''), 2500);
+  });
+  actionBtns.querySelector('#clearAllBtn').addEventListener('click', () => {
+    displayItems.forEach(it => {
+      const k = `${it.grade}-${it.week}-${it.wordIndex}`;
+      checkboxStateMap.set(k, 0);
+      touchedMap.set(k, false);
+      it.learnedWords.forEach(lw => {
+        const lwKey = `${k}::${lw.word.toLowerCase()}`;
+        learnedCheckboxMap.set(lwKey, false);
+        learnedTouchedMap.set(lwKey, false);
+      });
+    });
+    renderWords();
+    updateStatusMessage('已清空当前勾选');
+    setTimeout(() => updateStatusMessage(''), 1500);
+  });
+
   wordsContainer.appendChild(groupEl);
 }
 
@@ -469,7 +534,6 @@ function createWordCard(item, key) {
   mainDiv.appendChild(wordSpan);
   mainDiv.appendChild(sentenceSpan);
 
-  // 例句词汇判定区域
   if (item.learnedWords && item.learnedWords.length > 0) {
     const learnedBox = document.createElement('div');
     learnedBox.className = 'learned-words';
@@ -721,6 +785,7 @@ if (selectAllWeeksBtn) {
       cb.checked = true;
       cb.closest('.week-chip').classList.add('selected');
     });
+    updateDropdownHeaderText();
     loadWordsForSelectedWeeks();
   });
 }
@@ -733,38 +798,12 @@ if (clearAllWeeksBtn) {
       cb.checked = false;
       cb.closest('.week-chip').classList.remove('selected');
     });
+    updateDropdownHeaderText();
     loadWordsForSelectedWeeks();
   });
 }
 
 if (wrongWordsBtn) wrongWordsBtn.addEventListener('click', showWrongWordsList);
-if (downloadBtn) downloadBtn.addEventListener('click', downloadResults);
-
-if (submitBtn) {
-  submitBtn.addEventListener('click', async () => {
-    await submitResultsToSupabase();
-    updateStatusMessage('✅ 进度已成功提交至 Supabase 数据库！');
-    setTimeout(() => updateStatusMessage(''), 2500);
-  });
-}
-
-if (clearAllBtn) {
-  clearAllBtn.addEventListener('click', () => {
-    displayItems.forEach(item => {
-      const key = `${item.grade}-${item.week}-${item.wordIndex}`;
-      checkboxStateMap.set(key, 0);
-      touchedMap.set(key, false);
-      item.learnedWords.forEach(lw => {
-        const lwKey = `${key}::${lw.word.toLowerCase()}`;
-        learnedCheckboxMap.set(lwKey, false);
-        learnedTouchedMap.set(lwKey, false);
-      });
-    });
-    renderWords();
-    updateStatusMessage('已清空当前勾选');
-    setTimeout(() => updateStatusMessage(''), 1500);
-  });
-}
 
 function updateStatusMessage(msg) {
   if (statusMsg) statusMsg.textContent = msg || '';
