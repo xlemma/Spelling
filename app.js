@@ -3,7 +3,7 @@
 // =============================================================
 
 // ---------- 全局状态 ----------
-import { spellingData } from './data.js';
+
 const AUTO_DOWNLOAD = true;
 
 let selectedGrades = new Set([1]);
