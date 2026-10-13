@@ -1,5 +1,5 @@
 // =============================================================
-// 听写应用逻辑 (年级 Week 联动 + 单字分页 + 30秒自动提交 + 下一个自动提交)
+// 听写应用逻辑 (年级 Week 联动 + 单字分页 + 点击下一个自动提交)
 // =============================================================
 
 const SUPABASE_URL = 'https://whqpuzxfheqwaniuqbbz.supabase.co';
@@ -26,7 +26,7 @@ const wrongWordsBtn = document.getElementById('wrongWordsBtn');
 const statusMsg = document.getElementById('statusMsg');
 
 // =============================================================
-// 1. 初始化：加载所有年级和 Week 的对应关系结构
+// 1. 初始化：加载所有年级和 Week 的对应关系结构 (含 iPhone 兼容)
 // =============================================================
 async function initMetadata() {
   try {
@@ -71,7 +71,7 @@ async function initMetadata() {
     updateStatusMessage('');
   } catch (err) {
     console.error('初始化菜单失败:', err);
-    updateStatusMessage('❌ 初始化失败，请检查控制台');
+    updateStatusMessage('❌ 初始化失败，请检查网络或 HTTPS 环境');
   }
 }
 
@@ -290,7 +290,7 @@ function renderWords() {
   list.appendChild(card);
   groupEl.appendChild(list);
 
-  // 翻页导航栏（包含点击下一个自动提交）
+  // 翻页导航栏
   const navContainer = document.createElement('div');
   navContainer.style.cssText = 'display: flex; gap: 10px; margin-top: 14px; width: 100%;';
 
@@ -313,7 +313,7 @@ function renderWords() {
   nextBtn.style.opacity = currentWordIndex === displayItems.length - 1 ? '0.5' : '1';
   nextBtn.addEventListener('click', async () => {
     if (currentWordIndex < displayItems.length - 1) {
-      await submitResultsToSupabase(); // 点击下一个时自动提交
+      await submitResultsToSupabase(); // 点击下一个时自动同步
       currentWordIndex++;
       renderWords();
     }
@@ -401,7 +401,7 @@ function toggleCheckboxByKey(key) {
 }
 
 // =============================================================
-// 5. 数据库同步与自动提交
+// 5. 数据库同步函数
 // =============================================================
 async function submitResultsToSupabase() {
   const testedIds = [];
@@ -428,23 +428,6 @@ async function submitResultsToSupabase() {
     console.error('❌ 同步统计到 Supabase 失败:', err);
   }
 }
-
-// 每半分钟（30秒）自动提交一次进度
-setInterval(async () => {
-  if (displayItems && displayItems.length > 0) {
-    try {
-      await submitResultsToSupabase();
-      updateStatusMessage('⚡ 进度已自动同步至数据库');
-      setTimeout(() => {
-        if (statusMsg && statusMsg.textContent.includes('自动同步')) {
-          updateStatusMessage('');
-        }
-      }, 3000);
-    } catch (err) {
-      console.error('自动提交失败:', err);
-    }
-  }
-}, 30 * 1000);
 
 // =============================================================
 // 6. 导出 Excel（下载所有测试过的单词）
