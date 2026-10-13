@@ -1,5 +1,5 @@
 // =============================================================
-// 听写应用逻辑 (年级 Week 联动 + 错词直接刷新主列表版)
+// 听写应用逻辑 (年级 Week 动态联动 + 单字分页 + 30秒自动提交 + Excel 导出)
 // =============================================================
 
 const SUPABASE_URL = 'https://whqpuzxfheqwaniuqbbz.supabase.co';
@@ -11,16 +11,14 @@ const AUTO_DOWNLOAD = true;
 
 let displayItems = [];
 let spellingData = {}; 
-
-// 状态标志：当前是否处于错词视图
 let isWrongWordsView = false;
+let currentWordIndex = 0; // 单字分页索引
 
 // 状态映射
 const checkboxStateMap = new Map();
 const touchedMap = new Map();
 const learnedCheckboxMap = new Map();
 const learnedTouchedMap = new Map();
-
 let wordSourceIndex = new Map();
 
 // ---------- DOM 元素安全获取 ----------
@@ -129,13 +127,14 @@ function onGradeChange() {
 
   if (weeks.length > 0) {
     weekSelect.value = weeks[0];
-    isWrongWordsView = false; // 切换回普通年级Week视图
+    isWrongWordsView = false;
+    currentWordIndex = 0;
     loadWordsForCurrentSelection();
   }
 }
 
 // =============================================================
-// 2. 根据当前选中的 Grade 和 Week 动态从数据库取单词
+// 2. 动态加载单词
 // =============================================================
 async function loadWordsForCurrentSelection() {
   if (!gradeSelect || !weekSelect) return;
@@ -143,6 +142,8 @@ async function loadWordsForCurrentSelection() {
   const week = weekSelect.value;
 
   if (!grade || !week) return;
+
+  currentWordIndex = 0;
 
   try {
     updateStatusMessage(`正在加载 ${grade}年级 Week ${week} 单词...`);
@@ -199,12 +200,13 @@ async function loadWordsForCurrentSelection() {
 }
 
 // =============================================================
-// 3. 点击“查看错词本”：直接刷新主列表展示错题
+// 3. 错词本视图
 // =============================================================
 async function showWrongWordsList() {
   try {
     updateStatusMessage('正在获取错词本...');
-    isWrongWordsView = true; // 标记为错词视图
+    isWrongWordsView = true;
+    currentWordIndex = 0;
 
     let allWrongWords = [];
     let page = 0;
@@ -240,7 +242,6 @@ async function showWrongWordsList() {
       return;
     }
 
-    // 转换为 displayItems 格式
     displayItems = allWrongWords.map((row, idx) => ({
       id: row.id,
       grade: row.grade,
@@ -248,7 +249,7 @@ async function showWrongWordsList() {
       wordIndex: idx,
       word: row.word,
       sentence: row.sentence,
-      subtitle: `G${row.grade} W${row.week} (错 ${row.test_time - (row.correct_time || 0)}次)`,
+      subtitle: `G${row.grade} W${row.week} (错 ${(row.test_time || 0) - (row.correct_time || 0)}次)`,
       learnedWords: []
     }));
 
@@ -282,7 +283,6 @@ async function showWrongWordsList() {
   }
 }
 
-// 构建用于已学词匹配的词汇索引
 async function buildGlobalWordIndexForStats() {
   let allRows = [];
   let page = 0;
@@ -345,7 +345,7 @@ function findLearnedWords(sentence) {
 }
 
 // =============================================================
-// 渲染单词列表（根据是否为错词视图动态展示标题）
+// 4. 单字分页渲染
 // =============================================================
 function renderWords() {
   if (!wordsContainer) return;
@@ -353,6 +353,12 @@ function renderWords() {
     wordsContainer.innerHTML = '<div class="empty-state">当前没有单词</div>';
     return;
   }
+
+  if (currentWordIndex >= displayItems.length) currentWordIndex = displayItems.length - 1;
+  if (currentWordIndex < 0) currentWordIndex = 0;
+
+  const item = displayItems[currentWordIndex];
+  const key = `${item.grade}-${item.week}-${item.wordIndex}`;
 
   wordsContainer.innerHTML = '';
   const groupEl = document.createElement('div');
@@ -368,16 +374,13 @@ function renderWords() {
   progress.className = 'group-progress';
 
   if (isWrongWordsView) {
-    // 🌟 如果是错词视图，标题显示“错题”
     title.textContent = '⚠️ 错题本';
-    progress.textContent = `共 ${displayItems.length} 个错词`;
+    progress.textContent = `第 ${currentWordIndex + 1} / ${displayItems.length} 个`;
   } else {
-    // 🌟 如果是常规选择，标题显示年级和 Week
     const grade = gradeSelect.value;
     const week = weekSelect.value;
     title.textContent = `${grade}年级 · Week ${week}`;
-    progress.dataset.groupKey = `${grade}-${week}`;
-    updateGroupProgress(`${grade}-${week}`);
+    progress.textContent = `第 ${currentWordIndex + 1} / ${displayItems.length} 个`;
   }
 
   header.appendChild(title);
@@ -386,14 +389,44 @@ function renderWords() {
 
   const list = document.createElement('div');
   list.className = 'word-list';
+  const card = createWordCard(item, key);
+  list.appendChild(card);
+  groupEl.appendChild(list);
 
-  displayItems.forEach((item) => {
-    const key = `${item.grade}-${item.week}-${item.wordIndex}`;
-    const card = createWordCard(item, key);
-    list.appendChild(card);
+  // 翻页导航栏
+  const navContainer = document.createElement('div');
+  navContainer.style.cssText = 'display: flex; gap: 10px; margin-top: 14px; width: 100%;';
+
+  const prevBtn = document.createElement('button');
+  prevBtn.className = 'btn';
+  prevBtn.textContent = '⬅️ 上一个';
+  prevBtn.disabled = currentWordIndex === 0;
+  prevBtn.style.opacity = currentWordIndex === 0 ? '0.5' : '1';
+  prevBtn.addEventListener('click', () => {
+    if (currentWordIndex > 0) {
+      currentWordIndex--;
+      renderWords();
+    }
   });
 
-  groupEl.appendChild(list);
+  const nextBtn = document.createElement('button');
+  nextBtn.className = 'btn btn-primary';
+  nextBtn.textContent = '下一个 ➡️';
+  nextBtn.disabled = currentWordIndex === displayItems.length - 1;
+  nextBtn.style.opacity = currentWordIndex === displayItems.length - 1 ? '0.5' : '1';
+  nextBtn.addEventListener('click', () => {
+    if (currentWordIndex < displayItems.length - 1) {
+      currentWordIndex++;
+      renderWords();
+    }
+  });
+
+  prevBtn.style.flex = '1';
+  nextBtn.style.flex = '1';
+  navContainer.appendChild(prevBtn);
+  navContainer.appendChild(nextBtn);
+  groupEl.appendChild(navContainer);
+
   wordsContainer.appendChild(groupEl);
 }
 
@@ -417,12 +450,9 @@ function createWordCard(item, key) {
   sentenceSpan.className = 'sentence';
   sentenceSpan.textContent = item.sentence;
 
-  // 如果是在错词本里，可以额外显示具体的来源提示
   if (isWrongWordsView && item.subtitle) {
     const subSpan = document.createElement('span');
-    subSpan.style.fontSize = '0.75rem';
-    subSpan.style.color = '#c62828';
-    subSpan.style.fontWeight = '600';
+    subSpan.style.cssText = 'font-size: 0.75rem; color: #c62828; font-weight: 600;';
     subSpan.textContent = `来源: ${item.subtitle}`;
     mainDiv.appendChild(subSpan);
   }
@@ -430,7 +460,6 @@ function createWordCard(item, key) {
   mainDiv.appendChild(wordSpan);
   mainDiv.appendChild(sentenceSpan);
 
-  // 已学词
   if (item.learnedWords && item.learnedWords.length > 0) {
     const learnedBox = document.createElement('div');
     learnedBox.className = 'learned-words';
@@ -545,30 +574,12 @@ function toggleCheckboxByKey(key) {
     else { checkBox.textContent = ''; }
   }
 
-  if (!isWrongWordsView) {
-    const grade = gradeSelect.value;
-    const week = weekSelect.value;
-    updateGroupProgress(`${grade}-${week}`);
-  }
   checkAutoDownload();
 }
 
-function updateGroupProgress(groupKey) {
-  const total = displayItems.length;
-  let correct = 0;
-  let touched = 0;
-  displayItems.forEach(item => {
-    const k = `${item.grade}-${item.week}-${item.wordIndex}`;
-    const state = checkboxStateMap.get(k) || 0;
-    if (state === 1) correct++;
-    if (state !== 0) touched++;
-  });
-  const progressEl = document.querySelector(`.group-progress[data-group-key="${groupKey}"]`);
-  if (progressEl) {
-    progressEl.textContent = `✓${correct}/${total} · 已判定${touched}/${total}`;
-  }
-}
-
+// =============================================================
+// 5. 数据库同步与自动提交
+// =============================================================
 async function submitResultsToSupabase() {
   const testedIds = [];
   const correctIds = [];
@@ -607,11 +618,27 @@ async function submitResultsToSupabase() {
       p_correct_ids: correctIds
     });
     if (error) throw error;
-    console.log(`✅ 统计数据已同步：测试 ${testedIds.length} 项，正确 ${correctIds.length} 项。`);
   } catch (err) {
     console.error('❌ 同步统计到 Supabase 失败:', err);
   }
 }
+
+// 每半分钟（30秒）自动提交一次进度
+setInterval(async () => {
+  if (displayItems && displayItems.length > 0) {
+    try {
+      await submitResultsToSupabase();
+      updateStatusMessage('⚡ 进度已自动同步至数据库');
+      setTimeout(() => {
+        if (statusMsg && statusMsg.textContent.includes('自动同步')) {
+          updateStatusMessage('');
+        }
+      }, 3000);
+    } catch (err) {
+      console.error('自动提交失败:', err);
+    }
+  }
+}, 30 * 1000);
 
 function checkAutoDownload() {
   if (!AUTO_DOWNLOAD) return;
@@ -622,8 +649,85 @@ function checkAutoDownload() {
   const allLearnedTouched = Array.from(learnedTouchedMap.keys()).every(k => learnedTouchedMap.get(k) === true);
   
   if (allTargetTouched && allLearnedTouched && displayItems.length > 0) {
-    downloadResults(true);
-    updateStatusMessage('✅ 全部判定完成，已自动下载并同步！');
+    submitResultsToSupabase();
+    updateStatusMessage('✅ 本组全部判定完成，已同步！');
+  }
+}
+
+// =============================================================
+// 6. 导出 Excel（下载所有测试过的单词）
+// =============================================================
+async function downloadResults() {
+  try {
+    updateStatusMessage('正在从数据库获取所有已学单词数据...');
+    
+    let allTestedWords = [];
+    let page = 0;
+    let pageSize = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await supabaseClient
+        .from('words')
+        .select('*')
+        .gt('test_time', 0)
+        .order('grade', { ascending: true })
+        .order('week', { ascending: true })
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        allTestedWords = allTestedWords.concat(data);
+        if (data.length < pageSize) hasMore = false;
+        else page++;
+      } else {
+        hasMore = false;
+      }
+    }
+
+    updateStatusMessage('');
+
+    if (allTestedWords.length === 0) {
+      updateStatusMessage('没有找到任何已测试过的单词记录');
+      setTimeout(() => updateStatusMessage(''), 2500);
+      return;
+    }
+
+    const excelData = allTestedWords.map((item, index) => {
+      const testTime = item.test_time || 0;
+      const correctTime = item.correct_time || 0;
+      const wrongTime = testTime - correctTime;
+
+      return {
+        "序号": index + 1,
+        "年级": item.grade,
+        "Week": item.week,
+        "单词": item.word,
+        "例句": item.sentence,
+        "测试次数": testTime,
+        "正确次数": correctTime,
+        "错误次数": wrongTime
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "已学单词统计");
+
+    worksheet['!cols'] = [
+      {wch: 6}, {wch: 6}, {wch: 8}, {wch: 15}, {wch: 45}, {wch: 10}, {wch: 10}, {wch: 10}
+    ];
+
+    const fileName = `已学单词统计报告_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+
+    updateStatusMessage('📥 Excel 表格下载成功！');
+    setTimeout(() => updateStatusMessage(''), 2500);
+
+  } catch (err) {
+    console.error('导出 Excel 失败:', err);
+    updateStatusMessage('❌ 导出 Excel 失败');
   }
 }
 
@@ -637,7 +741,7 @@ if (weekSelect) weekSelect.addEventListener('change', () => {
 });
 
 if (wrongWordsBtn) wrongWordsBtn.addEventListener('click', showWrongWordsList);
-if (downloadBtn) downloadBtn.addEventListener('click', () => downloadResults(false));
+if (downloadBtn) downloadBtn.addEventListener('click', downloadResults);
 
 if (submitBtn) {
   submitBtn.addEventListener('click', async () => {
@@ -668,102 +772,13 @@ if (clearAllBtn) {
       });
     });
     renderWords();
-    updateStatusMessage('已清空所有勾选');
+    updateStatusMessage('已清空当前勾选');
     setTimeout(() => updateStatusMessage(''), 1500);
   });
 }
 
 function updateStatusMessage(msg) {
   if (statusMsg) statusMsg.textContent = msg || '';
-}
-
-// =============================================================
-// 直接从数据库调出所有已测单词（test_time > 0），导出为 Excel
-// =============================================================
-async function downloadResults() {
-  try {
-    updateStatusMessage('正在从数据库获取所有已学单词数据...');
-    
-    let allTestedWords = [];
-    let page = 0;
-    let pageSize = 1000;
-    let hasMore = true;
-
-    // 分页循环抓取所有 test_time > 0 的单词
-    while (hasMore) {
-      const { data, error } = await supabaseClient
-        .from('words')
-        .select('*')
-        .gt('test_time', 0) // 获取测试次数大于0的单词
-        .order('grade', { ascending: true })
-        .order('week', { ascending: true })
-        .range(page * pageSize, (page + 1) * pageSize - 1);
-
-      if (error) throw error;
-
-      if (data && data.length > 0) {
-        allTestedWords = allTestedWords.concat(data);
-        if (data.length < pageSize) hasMore = false;
-        else page++;
-      } else {
-        hasMore = false;
-      }
-    }
-
-    updateStatusMessage('');
-
-    if (allTestedWords.length === 0) {
-      updateStatusMessage('没有找到任何已测试过的单词记录');
-      setTimeout(() => updateStatusMessage(''), 2500);
-      return;
-    }
-
-    // 组装成 Excel 所需的结构化数据
-    const excelData = allTestedWords.map((item, index) => {
-      const testTime = item.test_time || 0;
-      const correctTime = item.correct_time || 0;
-      const wrongTime = testTime - correctTime; // 错误次数 = 测试次数 - 正确次数
-
-      return {
-        "序号": index + 1,
-        "年级": item.grade,
-        "Week": item.week,
-        "单词": item.word,
-        "例句": item.sentence,
-        "测试次数": testTime,
-        "正确次数": correctTime,
-        "错误次数": wrongTime
-      };
-    });
-
-    // 创建 Excel 工作簿
-    const worksheet = XLSX.utils.json_to_sheet(excelData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "已学单词统计");
-
-    // 优化列宽，使表格更加美观易读
-    worksheet['!cols'] = [
-      {wch: 6},  // 序号
-      {wch: 6},  // 年级
-      {wch: 8},  // Week
-      {wch: 15}, // 单词
-      {wch: 45}, // 例句
-      {wch: 10}, // 测试次数
-      {wch: 10}, // 正确次数
-      {wch: 10}  // 错误次数
-    ];
-
-    // 导出 Excel 文件
-    const fileName = `已学单词统计报告_${new Date().toISOString().slice(0, 10)}.xlsx`;
-    XLSX.writeFile(workbook, fileName);
-
-    updateStatusMessage('📥 Excel 表格下载成功！');
-    setTimeout(() => updateStatusMessage(''), 2500);
-
-  } catch (err) {
-    console.error('导出 Excel 失败:', err);
-    updateStatusMessage('❌ 导出 Excel 失败，请检查控制台');
-  }
 }
 
 // 启动入口
