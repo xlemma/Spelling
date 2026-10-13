@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-  <title>英语听写 · Dropdown Week 版</title>
+  <title>英语听写 · 多选 Week 版</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="app-container">
     <h1>📘 听写单词</h1>
     <div class="subhead">
-      年级单选 · Week 下拉多选 · 例句词汇判定 <span class="auto-badge">⚡ 单字分页</span>
+      年级单选 · Week 多选动态加载 · 例句词汇独立判定 <span class="auto-badge">⚡ 单字分页</span>
     </div>
 
     <!-- 错词本入口 -->
@@ -18,7 +18,7 @@
       <button class="btn btn-warning btn-block" id="wrongWordsBtn">⚠️ 查看错词本</button>
     </div>
 
-    <!-- 年级与下拉 Week 选择面板 -->
+    <!-- 年级与多选 Week 选择面板 -->
     <div class="panel">
       <div class="panel-title">
         <span>📚 选择年级</span>
@@ -29,27 +29,29 @@
         </select>
       </div>
 
-      <!-- 下拉式 Week 选择器 -->
-      <div class="panel-title">📅 选择 Week (下拉多选)</div>
-      <div class="dropdown-select-container">
-        <div class="dropdown-header" id="weekDropdownHeader">
-          <span id="weekDropdownText">请选择 Week</span>
-          <span class="dropdown-arrow">▼</span>
+      <div class="panel-title" style="display: flex; justify-content: space-between; align-items: center;">
+        <span>📅 选择 Week (可多选)</span>
+        <div>
+          <button class="text-btn" id="selectAllWeeks">全选</button>
+          <span style="color:#dce3ec; margin:0 4px;">|</span>
+          <button class="text-btn" id="clearAllWeeks">清空</button>
         </div>
-        <div class="dropdown-body" id="weekDropdownBody">
-          <div class="dropdown-actions">
-            <button class="text-btn" id="selectAllWeeks">全选</button>
-            <button class="text-btn" id="clearAllWeeks">清空</button>
-          </div>
-          <div id="weekCheckboxContainer" class="week-checkbox-container">
-            <div class="empty-state" style="padding: 10px;">请先选择年级</div>
-          </div>
-        </div>
+      </div>
+      <!-- Week 多选复选框容器 -->
+      <div id="weekCheckboxContainer" class="week-checkbox-container">
+        <div class="empty-state" style="padding: 10px;">请先选择年级</div>
       </div>
     </div>
 
     <div id="wordsContainer"></div>
 
+    <!-- 操作按钮区（已移除 sticky 固定，紧跟在内容后面） -->
+    <div class="action-buttons">
+      <button class="btn btn-primary" id="downloadBtn">📥 导出 Excel</button>
+      <button class="btn btn-success" id="submitBtn">🚀 提交进度</button>
+      <button class="btn" id="clearAllBtn">🧹 清空勾选</button>
+    </div>
+    
     <div class="status-msg" id="statusMsg"></div>
     <div class="footer-note">点1次=对(✓) · 点2次=错(✗) · 点3次=空 · 点击“下一个”自动提交</div>
   </div>
