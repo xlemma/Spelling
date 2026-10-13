@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-  <title>英语听写 · 动态下拉选择版</title>
+  <title>英语听写 · 动态单字分页版</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="app-container">
     <h1>📘 听写单词</h1>
     <div class="subhead">
-      选择年级与 Week 动态加载 · 已学词统计 <span class="auto-badge">⚡ 自动下载已开启</span>
+      动态单字分页 · 已学词统计 <span class="auto-badge">⚡ 30秒自动同步已开启</span>
     </div>
 
     <!-- 错词本入口 -->
@@ -42,16 +42,16 @@
     <div id="wordsContainer"></div>
 
     <div class="action-buttons">
-      <button class="btn btn-primary" id="downloadBtn">📥 下载结果</button>
+      <button class="btn btn-primary" id="downloadBtn">📥 导出 Excel</button>
       <button class="btn btn-success" id="submitBtn">🚀 提交进度</button>
       <button class="btn" id="statsBtn">📊 已学词统计</button>
       <button class="btn" id="clearAllBtn">🧹 清空勾选</button>
     </div>
     <div class="status-msg" id="statusMsg"></div>
-    <div class="footer-note">点1次=对(✓) · 点2次=错(✗) · 点3次=空 · 全部判定后自动下载</div>
+    <div class="footer-note">点1次=对(✓) · 点2次=错(✗) · 点3次=空 · 每半分钟自动同步</div>
   </div>
 
-  <!-- 仅保留已学词统计弹窗 -->
+  <!-- 已学词统计弹窗 -->
   <div class="modal-overlay" id="statsModal">
     <div class="modal">
       <div class="modal-header">
@@ -64,6 +64,8 @@
       </div>
     </div>
   </div>
+  
+  <!-- 引入 SheetJS 用于导出 Excel -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="app.js"></script>
