@@ -210,6 +210,11 @@ h1 {
   border-color: #b7e0c5;
 }
 
+.word-card.incorrect {
+  background: #fff5f5;
+  border-color: #f5c6cb;
+}
+
 .word-main {
   flex: 1;
   display: flex;
@@ -370,6 +375,12 @@ h1 {
 .word-card.correct .check-box {
   background: #2e7d5e;
   border-color: #2e7d5e;
+  color: white;
+}
+
+.word-card.incorrect .check-box {
+  background: #c62828;
+  border-color: #c62828;
   color: white;
 }
 
