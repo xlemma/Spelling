@@ -420,6 +420,17 @@ h1 {
   background: #134a9e;
 }
 
+.btn-success {
+  background: #2e7d5e;
+  border-color: #2e7d5e;
+  color: white;
+  box-shadow: 0 8px 16px -6px rgba(46, 125, 94, 0.3);
+}
+
+.btn-success:active {
+  background: #225d45;
+}
+
 .btn:active {
   transform: translateY(1px);
   box-shadow: none;
