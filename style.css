@@ -1,322 +1,53 @@
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  font-family: 'Segoe UI', Roboto, system-ui, -apple-system, sans-serif;
-  background: #f5f7fb;
-  min-height: 100vh;
-  padding: 16px 12px 32px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.app-container {
-  max-width: 720px;
-  width: 100%;
-  background: white;
-  border-radius: 28px;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
-  padding: 20px 18px 24px;
-  margin-bottom: 20px;
-}
-
-h1 {
-  font-size: 1.8rem;
-  font-weight: 600;
-  color: #1e2b3c;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-  letter-spacing: -0.02em;
-}
-
-.subhead {
-  font-size: 0.9rem;
-  color: #6b7a8f;
-  margin-bottom: 16px;
-  border-left: 4px solid #4f9cf7;
-  padding-left: 12px;
-  background: #f0f6ff;
-  border-radius: 0 12px 12px 0;
-  line-height: 1.4;
-  padding: 8px 12px;
-}
-
-.auto-badge {
-  display: inline-block;
-  background: #e6f4ea;
-  color: #1e7a4b;
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 2px 10px;
-  border-radius: 20px;
-  margin-left: 6px;
-  vertical-align: middle;
-  border: 1px solid #c3e6d3;
-}
-
-.top-action-bar {
-  margin-bottom: 16px;
-}
-
-.btn-block {
-  width: 100%;
-  flex: 1 1 100%;
-}
-
-.btn-warning {
-  background: #f59e0b;
-  border-color: #f59e0b;
-  color: white;
-  box-shadow: 0 8px 16px -6px rgba(245, 158, 11, 0.3);
-}
-
-.btn-warning:active {
-  background: #d97706;
-}
-
-.panel {
-  background: #f8fafd;
-  border-radius: 24px;
-  padding: 16px 14px;
-  margin-bottom: 20px;
-}
-
-.panel-title {
-  font-size: 0.8rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: #4a5b6f;
-  margin-bottom: 10px;
-}
-
-.select-group {
-  display: flex;
-  gap: 12px;
-}
-
-.select-item {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.select-item label {
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: #6b7a8f;
-}
-
-.form-select {
-  width: 100%;
-  padding: 10px 12px;
-  font-size: 0.95rem;
-  font-weight: 500;
-  color: #1e2b3c;
-  background: white;
-  border: 1.5px solid #dce3ec;
-  border-radius: 14px;
-  outline: none;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.form-select:focus {
-  border-color: #1e5bbf;
-  box-shadow: 0 0 0 3px rgba(30, 91, 191, 0.1);
-}
-
-.week-group {
-  margin-bottom: 22px;
-}
-
-.group-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 6px 4px 10px;
-  padding-bottom: 6px;
-  border-bottom: 2px dashed #e3eaf3;
-}
-
-.group-title {
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: #1e2b3c;
-}
-
-.group-progress {
+/* 文本小按钮样式 */
+.text-btn {
+  background: none;
+  border: none;
+  color: #1e5bbf;
   font-size: 0.78rem;
   font-weight: 600;
-  color: #1e5bbf;
-}
-
-.word-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.word-card {
-  background: #ffffff;
-  border: 1.5px solid #e9eef4;
-  border-radius: 20px;
-  padding: 16px 18px;
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
-}
-
-.word-card.correct {
-  background: #f0faf3;
-  border-color: #b7e0c5;
-}
-
-.word-card.incorrect {
-  background: #fff5f5;
-  border-color: #f5c6cb;
-}
-
-.word-main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-
-.word-text {
-  font-size: 1.6rem;
-  font-weight: 700;
-  color: #0f1e2f;
-  line-height: 1.2;
-  word-break: break-word;
-}
-
-.sentence {
-  font-size: 0.95rem;
-  color: #51657b;
-  font-style: italic;
-  background: #f4f8ff;
-  padding: 6px 12px;
-  border-radius: 12px;
-  display: inline-block;
-  line-height: 1.5;
-  word-break: break-word;
-}
-
-.check-wrapper {
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.check-wrapper label {
-  font-size: 0.65rem;
-  font-weight: 600;
-  color: #6b7a8f;
-}
-
-.check-box {
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  border: 2px solid #cfdae6;
-  background: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.6rem;
   cursor: pointer;
-  user-select: none;
-  color: #a0b3c9;
+  padding: 2px 4px;
+}
+.text-btn:hover {
+  text-decoration: underline;
 }
 
-.word-card.correct .check-box {
-  background: #2e7d5e;
-  border-color: #2e7d5e;
-  color: white;
-}
-
-.word-card.incorrect .check-box {
-  background: #c62828;
-  border-color: #c62828;
-  color: white;
-}
-
-.action-buttons {
+/* Week 多选容器样式 */
+.week-checkbox-container {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 14px;
-  position: sticky;
-  bottom: 12px;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(8px);
-  padding: 10px 0 4px;
-  border-radius: 20px;
+  gap: 8px;
+  max-height: 140px;
+  overflow-y: auto;
+  padding: 4px 2px;
 }
 
-.btn {
-  flex: 1 1 120px;
-  padding: 14px 10px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  border-radius: 16px;
-  border: none;
-  cursor: pointer;
+/* Week 标签卡片样式 */
+.week-chip {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 6px;
   background: white;
-  border: 1.5px solid #d0ddeb;
-  color: #1e2b3c;
-}
-
-.btn-primary {
-  background: #1e5bbf;
-  border-color: #1e5bbf;
-  color: white;
-}
-
-.btn-success {
-  background: #2e7d5e;
-  border-color: #2e7d5e;
-  color: white;
-}
-
-.status-msg {
-  text-align: center;
+  border: 1.5px solid #dce3ec;
+  padding: 6px 12px;
+  border-radius: 12px;
   font-size: 0.85rem;
+  font-weight: 600;
+  color: #4a5b6f;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.week-chip input[type="checkbox"] {
+  accent-color: #1e5bbf;
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+.week-chip.selected {
+  background: #f0f6ff;
+  border-color: #1e5bbf;
   color: #1e5bbf;
-  font-weight: 500;
-  margin-top: 10px;
-  min-height: 22px;
-}
-
-.footer-note {
-  font-size: 0.75rem;
-  color: #8a9aad;
-  text-align: center;
-  margin-top: 12px;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 40px 20px;
-  color: #8a9aad;
-  font-size: 0.95rem;
 }
