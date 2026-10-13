@@ -419,3 +419,24 @@ h1 {
 .stats-table td.green-cell { color: #2e7d5e; font-weight: 600; }
 .stats-table td.red-cell { color: #c62828; font-weight: 600; }
 .modal-close { width: 34px; height: 34px; border-radius: 12px; border: none; background: white; cursor: pointer; }
+
+/* 顶部错词本栏 */
+.top-action-bar {
+  margin-bottom: 20px;
+}
+
+.btn-block {
+  width: 100%;
+  flex: 1 1 100%;
+}
+
+.btn-warning {
+  background: #f59e0b;
+  border-color: #f59e0b;
+  color: white;
+  box-shadow: 0 8px 16px -6px rgba(245, 158, 11, 0.3);
+}
+
+.btn-warning:active {
+  background: #d97706;
+}
