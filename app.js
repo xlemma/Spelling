@@ -1,9 +1,14 @@
-
 // =============================================================
-// 听写应用逻辑
+// 听写应用逻辑 (Supabase 动态加载版)
 // =============================================================
 
-// ---------- 全局状态 ----------
+// ---------- Supabase 配置 ----------
+const SUPABASE_URL = 'https://whqpuzxfheqwaniuqbbz.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR_REAL_ANON_KEY_HERE'; // 替换为你的真实 anon key
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// 全局数据结构（从数据库动态组装）
+let spellingData = {};
 
 const AUTO_DOWNLOAD = true;
 
@@ -39,6 +44,56 @@ const statsModal = document.getElementById('statsModal');
 const statsClose = document.getElementById('statsClose');
 const statsBody = document.getElementById('statsBody');
 const statsDownload = document.getElementById('statsDownload');
+
+// =============================================================
+// 从 Supabase 加载所有单词数据并组装成 spellingData
+// =============================================================
+async function loadDataFromSupabase() {
+  try {
+    updateStatusMessage('正在从数据库加载单词...');
+    
+    // 从 words 表中获取所有记录，按 grade 和 week 排序
+    const { data, error } = await supabaseClient
+      .from('words')
+      .select('*')
+      .order('grade', { ascending: true })
+      .order('week', { ascending: true });
+
+    if (error) throw error;
+
+    spellingData = {};
+
+    // 将平铺的数据库行组装回嵌套的 spellingData 结构
+    data.forEach(row => {
+      const g = row.grade;
+      const w = row.week;
+
+      if (!spellingData[g]) {
+        spellingData[g] = {};
+      }
+      if (!spellingData[g][w]) {
+        spellingData[g][w] = {
+          subtitle: `Week ${w} 练习`, // 如果数据库有 subtitle 字段可改为 row.subtitle
+          words: []
+        };
+      }
+
+      spellingData[g][w].words.push({
+        id: row.id,
+        word: row.word,
+        sentence: row.sentence,
+        related_word_ids: row.related_word_ids || []
+      });
+    });
+
+    updateStatusMessage('');
+    return true;
+  } catch (err) {
+    console.error('加载 Supabase 数据失败:', err);
+    updateStatusMessage('❌ 加载数据库失败，请检查控制台');
+    return false;
+  }
+}
 
 // =============================================================
 // 构建"单词 -> 来源"索引
@@ -330,7 +385,6 @@ function createWordCard(item, key) {
       lwItem.className = 'learned-word-item';
       lwItem.dataset.learnedKey = lwKey;
 
-      // 已判定：对=绿，错=红；未判定：默认样式
       if (learnedTouchedMap.get(lwKey) === true) {
         if (learnedCheckboxMap.get(lwKey) === true) {
           lwItem.classList.add('correct');
@@ -396,7 +450,7 @@ function createWordCard(item, key) {
 }
 
 // =============================================================
-// 切换已学词勾选：点击循环 未判定 -> 对 -> 错 -> 未判定
+// 切换已学词勾选
 // =============================================================
 function toggleLearnedCheckbox(lwKey, element) {
   const touched = learnedTouchedMap.get(lwKey) === true;
@@ -404,13 +458,10 @@ function toggleLearnedCheckbox(lwKey, element) {
 
   let newTouched, newCorrect;
   if (!touched) {
-    // 未判定 -> 对
     newTouched = true; newCorrect = true;
   } else if (isCorrect) {
-    // 对 -> 错
     newTouched = true; newCorrect = false;
   } else {
-    // 错 -> 未判定
     newTouched = false; newCorrect = false;
   }
 
@@ -510,10 +561,9 @@ function updateGroupProgressByKey(groupKey) {
 }
 
 // =============================================================
-// 统计：按"已学词"聚合
+// 统计与弹窗相关函数
 // =============================================================
 function computeStats() {
-  // word -> { word, sources, appear, correct, wrong, touched }
   const stats = new Map();
 
   displayItems.forEach(item => {
@@ -542,15 +592,11 @@ function computeStats() {
   });
 
   return Array.from(stats.values()).sort((a, b) => {
-    // 先按错误次数多的排，再按出现次数多的排
     if (b.wrong !== a.wrong) return b.wrong - a.wrong;
     return b.appear - a.appear;
   });
 }
 
-// =============================================================
-// 显示统计弹窗
-// =============================================================
 function showStats() {
   const stats = computeStats();
 
@@ -560,7 +606,6 @@ function showStats() {
     return;
   }
 
-  // 汇总
   let totalAppear = 0, totalCorrect = 0, totalWrong = 0, totalTouched = 0;
   stats.forEach(s => {
     totalAppear += s.appear;
@@ -633,9 +678,6 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
-// =============================================================
-// 下载统计
-// =============================================================
 function downloadStats() {
   const stats = computeStats();
   if (stats.length === 0) {
@@ -658,9 +700,7 @@ function downloadStats() {
     totalAppear += s.appear;
     totalCorrect += s.correct;
     totalWrong += s.wrong;
-    const sourceStr = s.sources
-      .map(x => `G${x.grade}W${x.week}`)
-      .join(',');
+    const sourceStr = s.sources.map(x => `G${x.grade}W${x.week}`).join(',');
     const notTouched = s.appear - s.touched;
     lines.push(
       s.word.padEnd(16) +
@@ -671,12 +711,6 @@ function downloadStats() {
       String(notTouched).padStart(4)
     );
   });
-
-  lines.push('========================================');
-  lines.push(`不同已学词: ${stats.length}`);
-  lines.push(`总出现次数: ${totalAppear}`);
-  lines.push(`总正确次数: ${totalCorrect}`);
-  lines.push(`总错误次数: ${totalWrong}`);
 
   const content = lines.join('\n');
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
@@ -690,9 +724,6 @@ function downloadStats() {
   URL.revokeObjectURL(url);
 }
 
-// =============================================================
-// 下载听写结果（含已学词判定）
-// =============================================================
 function downloadResults(isAuto = false) {
   if (displayItems.length === 0) {
     updateStatusMessage('没有可下载的单词');
@@ -764,10 +795,6 @@ function downloadResults(isAuto = false) {
     });
   });
 
-  lines.push('========================================');
-  lines.push(`目标单词: ${displayItems.length} 词 | 正确: ${correctCount} | 错误: ${displayItems.length - correctCount}`);
-  lines.push(`已学词汇: 共出现 ${learnedTotal} 次 | 对: ${learnedCorrectCount} | 错: ${learnedWrongCount} | 未判: ${learnedTotal - learnedCorrectCount - learnedWrongCount}`);
-
   const content = lines.join('\n');
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -788,7 +815,7 @@ function downloadResults(isAuto = false) {
 }
 
 // =============================================================
-// 其他事件
+// 事件绑定
 // =============================================================
 function updateStatusMessage(msg) {
   statusMsg.textContent = msg || '';
@@ -835,13 +862,16 @@ clearAllBtn.addEventListener('click', () => {
 });
 
 // =============================================================
-// 初始化
+// 初始化入口（异步）
 // =============================================================
-function init() {
-  buildWordSourceIndex();
-  renderGradeChips();
-  renderWeekChips();
-  rebuildDisplay();
+async function init() {
+  const success = await loadDataFromSupabase();
+  if (success) {
+    buildWordSourceIndex();
+    renderGradeChips();
+    renderWeekChips();
+    rebuildDisplay();
+  }
 }
 
 init();
