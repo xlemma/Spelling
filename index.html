@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-  <title>英语听写 · 动态单字分页版</title>
+  <title>英语听写 · 多选 Week 版</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="app-container">
     <h1>📘 听写单词</h1>
     <div class="subhead">
-      动态单字分页 · 听写练习 <span class="auto-badge">⚡ 30秒自动同步已开启</span>
+      年级单选 · Week 多选动态加载 <span class="auto-badge">⚡ 单字分页</span>
     </div>
 
     <!-- 错词本入口 -->
@@ -18,24 +18,28 @@
       <button class="btn btn-warning btn-block" id="wrongWordsBtn">⚠️ 查看错词本</button>
     </div>
 
-    <!-- 动态下拉选择面板 -->
+    <!-- 年级与多选 Week 选择面板 -->
     <div class="panel">
       <div class="panel-title">
-        <span>📚 年级与 Week 选择</span>
+        <span>📚 选择年级</span>
       </div>
-      <div class="select-group">
-        <div class="select-item">
-          <label for="gradeSelect">年级</label>
-          <select id="gradeSelect" class="form-select">
-            <option value="">请选择年级</option>
-          </select>
+      <div class="select-item" style="margin-bottom: 14px;">
+        <select id="gradeSelect" class="form-select">
+          <option value="">请选择年级</option>
+        </select>
+      </div>
+
+      <div class="panel-title" style="display: flex; justify-content: space-between; align-items: center;">
+        <span>📅 选择 Week (可多选)</span>
+        <div>
+          <button class="text-btn" id="selectAllWeeks">全选</button>
+          <span style="color:#dce3ec; margin:0 4px;">|</span>
+          <button class="text-btn" id="clearAllWeeks">清空</button>
         </div>
-        <div class="select-item">
-          <label for="weekSelect">Week</label>
-          <select id="weekSelect" class="form-select">
-            <option value="">请选择 Week</option>
-          </select>
-        </div>
+      </div>
+      <!-- Week 多选复选框容器 -->
+      <div id="weekCheckboxContainer" class="week-checkbox-container">
+        <div class="empty-state" style="padding: 10px;">请先选择年级</div>
       </div>
     </div>
 
@@ -47,7 +51,7 @@
       <button class="btn" id="clearAllBtn">🧹 清空勾选</button>
     </div>
     <div class="status-msg" id="statusMsg"></div>
-    <div class="footer-note">点1次=对(✓) · 点2次=错(✗) · 点3次=空 · 点击“下一个”自动提交与翻页</div>
+    <div class="footer-note">点1次=对(✓) · 点2次=错(✗) · 点3次=空 · 点击“下一个”自动提交</div>
   </div>
 
   <!-- 引入 SheetJS 用于导出 Excel -->
