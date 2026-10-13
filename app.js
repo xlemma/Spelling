@@ -677,30 +677,78 @@ function updateStatusMessage(msg) {
   if (statusMsg) statusMsg.textContent = msg || '';
 }
 
+// =============================================================
+// 下载结果：包含所有单词、例句、正确次数和错误次数
+// =============================================================
 function downloadResults(isAuto = false) {
   if (displayItems.length === 0) return;
   submitResultsToSupabase();
   
   const titleName = isWrongWordsView ? '错题本' : `Grade_${gradeSelect.value}_Week_${weekSelect.value}`;
-  const lines = [`听写结果 - ${titleName}`, `生成时间: ${new Date().toLocaleString()}`, '========================================'];
+  const lines = [
+    `听写结果统计报告 - ${titleName}`,
+    `生成时间: ${new Date().toLocaleString()}`,
+    '========================================',
+    ''
+  ];
   
-  displayItems.forEach(item => {
+  let correctTotal = 0;
+  let wrongTotal = 0;
+  let unjudgedTotal = 0;
+
+  displayItems.forEach((item, idx) => {
     const key = `${item.grade}-${item.week}-${item.wordIndex}`;
     const state = checkboxStateMap.get(key) || 0;
-    const res = state === 1 ? '✓ 正确' : (state === 2 ? '✗ 错误' : '— 未判');
-    lines.push(`【${item.word}】 ${res}`);
-    lines.push(`  例句: ${item.sentence}\n`);
+    
+    let resText = '— 未判';
+    if (state === 1) {
+      correctTotal++;
+      resText = '✓ 正确';
+    } else if (state === 2) {
+      wrongTotal++;
+      resText = '✗ 错误';
+    } else {
+      unjudgedTotal++;
+    }
+
+    // 计算当前单词的对错表现（如果有历史统计或当前轮次的体现）
+    // 这里展示本次判定的结果以及提示
+    lines.push(`[${idx + 1}] 单词: ${item.word}`);
+    lines.push(`    例句: ${item.sentence}`);
+    lines.push(`    本次判定: ${resText}`);
+    
+    if (item.learnedWords && item.learnedWords.length > 0) {
+      lines.push(`    包含已学词:`);
+      item.learnedWords.forEach(lw => {
+        const lwKey = `${key}::${lw.word.toLowerCase()}`;
+        const lwTouched = learnedTouchedMap.get(lwKey) === true;
+        const lwCorrect = learnedCheckboxMap.get(lwKey) === true;
+        const lwRes = !lwTouched ? '— 未判' : (lwCorrect ? '✓ 正确' : '✗ 错误');
+        lines.push(`      - ${lw.word} (${lwRes})`);
+      });
+    }
+    lines.push('----------------------------------------');
   });
 
-  const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+  lines.push('');
+  lines.push('========================================');
+  lines.push(`统计汇总: 总计 ${displayItems.length} 词 | 正确: ${correctTotal} | 错误: ${wrongTotal} | 未判: ${unjudgedTotal}`);
+
+  const content = lines.join('\n');
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${titleName}_听写结果.txt`;
+  a.download = `${titleName}_详细听写报告.txt`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+
+  if (!isAuto) {
+    updateStatusMessage('📥 下载成功并已同步至数据库！');
+    setTimeout(() => updateStatusMessage(''), 2500);
+  }
 }
 
 // 启动入口
